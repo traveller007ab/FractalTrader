@@ -1,0 +1,5 @@
+{
+  "name": "Fractal Shift Trading Bot",
+  "description": "A premium, practical trading product that generates actionable signals derived from a user-provided 'Fractal Shift' strategy using real market data and Supabase for persistence.",
+  "requestFramePermissions": []
+}
