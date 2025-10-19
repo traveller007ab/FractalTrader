@@ -9,12 +9,12 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
   return (
-    <header className="bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40 border-b border-slate-700">
+    <header className="bg-container-bg sticky top-0 z-40 border-b border-border-color">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14">
           <div className="flex items-center">
-            <LogoIcon className="h-8 w-8 text-emerald-400" />
-            <span className="ml-3 text-2xl font-bold text-white tracking-tight">SignalFlow</span>
+            <LogoIcon className="h-8 w-8 text-brand-accent" />
+            <span className="ml-3 text-xl font-semibold text-slate-100 tracking-tight">SignalFlow</span>
           </div>
           <div className="flex items-center">
             {session?.user && (
@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
                 <span className="text-sm text-slate-400 mr-4 hidden sm:block">{session.user.email}</span>
                 <button
                   onClick={onSignOut}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-slate-800 rounded-md hover:bg-slate-700 border border-slate-700 transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium text-slate-200 bg-slate-800 rounded-md hover:bg-slate-700 border border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent"
                 >
                   Sign Out
                 </button>

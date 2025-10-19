@@ -21,6 +21,12 @@
     tailwind.config = {
       theme: {
         extend: {
+          colors: {
+            'brand-accent': '#38bdf8', // sky-400
+            'dark-bg': '#020617',     // slate-950
+            'container-bg': '#0f172a', // slate-900
+            'border-color': '#1e293b',// slate-800
+          },
           animation: {
             'fade-in-up': 'fade-in-up 0.5s ease-out both',
           },
@@ -40,8 +46,26 @@
       },
     }
   </script>
+  <style>
+    /* Custom Scrollbar Styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a; /* container-bg */
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #334155; /* slate-700 */
+      border-radius: 3px;
+      border: 1px solid #0f172a; /* container-bg, creates padding */
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: #38bdf8; /* brand-accent */
+    }
+  </style>
 </head>
-  <body class="bg-slate-900 text-gray-200">
+  <body class="bg-dark-bg text-slate-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

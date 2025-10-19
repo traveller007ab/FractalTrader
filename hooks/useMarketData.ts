@@ -30,7 +30,7 @@ export function useMarketData(user: User | null) {
       const [signalsRes, tradesRes, backtestsRes] = await Promise.all([
         supabase.from('signals').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('copied_trades').select('*'),
-        supabase.from('backtest_runs').select('*').order('started_at', { ascending: false }).limit(10)
+        supabase.from('backtest_runs').select('*').order('created_at', { ascending: false }).limit(10)
       ]);
 
       if (signalsRes.error) throw signalsRes.error;
@@ -103,12 +103,20 @@ export function useMarketData(user: User | null) {
         fetchData(); // Re-fetch all data on trade changes to update metrics
       })
       .subscribe();
+      
+    const backtestChannel = supabase
+      .channel('public:backtest_runs')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'backtest_runs'}, () => {
+        fetchData(); // Re-fetch data to show new backtest run
+      })
+      .subscribe();
 
     return () => {
       supabase.removeChannel(signalChannel);
       supabase.removeChannel(tradeChannel);
+      supabase.removeChannel(backtestChannel);
     };
   }, [user, fetchData]);
 
-  return { loading, signals, backtests, pnlHistory, performanceMetrics, userPnl };
+  return { loading, signals, backtests, pnlHistory, performanceMetrics, userPnl, copiedTrades, fetchData };
 }

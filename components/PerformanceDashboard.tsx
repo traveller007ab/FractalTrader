@@ -10,35 +10,37 @@ interface PerformanceDashboardProps {
   loading: boolean;
 }
 
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
-  <div className="bg-slate-800 p-4 rounded-lg flex items-center border border-slate-700">
-    <div className={`p-3 rounded-full mr-4 ${color}`}>
-      {icon}
+const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; }> = ({ title, value, icon }) => (
+  <div className="bg-container-bg p-4 rounded-lg border border-border-color">
+    <div className="flex items-center">
+      <div className="text-slate-500 mr-3">{icon}</div>
+      <p className="text-sm text-slate-400 font-medium">{title}</p>
     </div>
-    <div>
-      <p className="text-sm text-slate-400">{title}</p>
-      <p className="text-2xl font-semibold text-white">{value}</p>
-    </div>
+    <p className="text-2xl font-semibold text-slate-100 mt-2 font-mono">{value}</p>
   </div>
 );
 
 const StatCardSkeleton: React.FC = () => (
-    <div className="bg-slate-800 p-4 rounded-lg flex items-center border border-slate-700 animate-pulse">
-        <div className="p-3 rounded-full mr-4 bg-slate-700 h-12 w-12"></div>
-        <div className="flex-1 space-y-2">
+    <div className="bg-container-bg p-4 rounded-lg border border-border-color animate-pulse">
+        <div className="flex items-center">
+            <div className="h-5 w-5 bg-slate-700 rounded mr-3"></div>
             <div className="h-4 bg-slate-700 rounded w-3/4"></div>
-            <div className="h-6 bg-slate-700 rounded w-1/2"></div>
         </div>
+        <div className="h-7 bg-slate-700 rounded w-1/2 mt-2"></div>
     </div>
 );
 
 export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metrics, pnlHistory, userPnl, loading }) => {
   const statCardCount = userPnl !== null ? 5 : 4;
+  
+  const pnlColor = metrics.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const userPnlColor = userPnl !== null && userPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+
   return (
-    <div className="bg-slate-800/50 rounded-lg shadow-lg border border-slate-700">
-       <div className="p-4 border-b border-slate-700 flex items-center">
-        <ChartIcon className="w-6 h-6 mr-3 text-emerald-400" />
-        <h2 className="text-lg font-semibold text-white">Performance Analytics</h2>
+    <div className="bg-container-bg rounded-lg shadow-lg border border-border-color">
+       <div className="p-4 border-b border-border-color flex items-center">
+        <ChartIcon className="w-6 h-6 mr-3 text-brand-accent" />
+        <h2 className="text-lg font-semibold text-slate-100">Performance Analytics</h2>
       </div>
       <div className="p-4">
         {loading ? (
@@ -47,13 +49,13 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metr
             </div>
         ) : (
             <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${statCardCount} gap-4 mb-6`}>
-              <StatCard title="Total P&L (Global)" value={`$${metrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-6 h-6 text-white"/>} color="bg-emerald-500/80" />
+              <StatCard title="Global P&L" value={`$${metrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} />
               {userPnl !== null && (
-                 <StatCard title="My Copied P&L" value={`$${userPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-6 h-6 text-white"/>} color="bg-indigo-500/80" />
+                 <StatCard title="My P&L" value={`$${userPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-5 h-5"/>} />
               )}
-              <StatCard title="Win Rate" value={`${metrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-6 h-6 text-white"/>} color="bg-sky-500/80" />
-              <StatCard title="Max Drawdown" value={`${metrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-6 h-6 text-white"/>} color="bg-red-500/80" />
-              <StatCard title="Avg. Latency" value={`${metrics.latency_ms}ms`} icon={<LatencyIcon className="w-6 h-6 text-white"/>} color="bg-yellow-500/80" />
+              <StatCard title="Win Rate" value={`${metrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
+              <StatCard title="Max Drawdown" value={`${metrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
+              <StatCard title="Avg. Latency" value={`${metrics.latency_ms}ms`} icon={<LatencyIcon className="w-5 h-5"/>} />
             </div>
         )}
         <div className="h-80">
