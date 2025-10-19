@@ -198,13 +198,16 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
         }
         await onRunBacktest(parsedData, file.name);
       } catch (e: unknown) {
-        // FIX: Refactored complex error handling to be simpler and safer.
-        // This avoids potential unsafe property access on an 'unknown' type.
+        // FIX: The error object `e` is of type `unknown`. We need to safely
+        // check its type before accessing properties like `message` or `name` to avoid runtime errors.
         let message = 'An unknown error occurred while processing this file.';
         if (e instanceof Error) {
-          message = e.message;
+            message = e.message;
         } else if (typeof e === 'string') {
-          message = e;
+            message = e;
+        } else if (typeof e === 'object' && e !== null) {
+            // Safely access message property from a plain object
+            message = (e as { message?: string }).message || 'Backtest failed with an unspecified error.';
         }
         newErrors[file.name] = message;
       }

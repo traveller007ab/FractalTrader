@@ -164,8 +164,16 @@ function App() {
             errorMessage = error.message;
         } else if (typeof error === 'string') {
             errorMessage = error;
+        } else if (typeof error === 'object' && error !== null) {
+            errorMessage = (error as { message?: string }).message || 'Object error without message';
         }
-        addToast(`Backtest failed: ${errorMessage}`, 'error');
+
+        if (errorMessage.includes('Failed to fetch')) {
+             addToast(`Backtest ran, but failed to save results. Check network connection.`, 'error');
+        } else {
+            addToast(`Backtest failed: ${errorMessage}`, 'error');
+        }
+        
         console.error('Backtest error:', error);
         throw error; // Re-throw to be caught by the UI component
     }

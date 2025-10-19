@@ -43,7 +43,8 @@ export async function runBacktestFromData(data: TimeSeriesData[], settings: Stra
         stopLossAtrMultiplier, takeProfitR_R, riskPercent
     } = settings;
 
-    const lookbackPeriod = 50; // Reduced lookback to accommodate smaller datasets
+    // A minimum number of bars are needed to calculate indicators like SMA and ATR.
+    const lookbackPeriod = Math.max(smaPeriod + 3, atrPeriod + 1, 40);
     if (data.length <= lookbackPeriod) {
         throw new Error(`Insufficient data. Need at least ${lookbackPeriod + 1} rows, but got ${data.length}.`);
     }
@@ -98,6 +99,8 @@ export async function runBacktestFromData(data: TimeSeriesData[], settings: Stra
             // Fractal Detection
             let lastFractalHigh = null, lastFractalLow = null;
             const fractalSlice = historicalSlice.slice(-30);
+            if(fractalSlice.length < 5) continue; // Not enough data for fractal
+            
             for (let j = fractalSlice.length - 3; j >= 2; j--) {
                 const center = fractalSlice[j], p1 = fractalSlice[j-1], p2 = fractalSlice[j-2], n1 = fractalSlice[j+1], n2 = fractalSlice[j+2];
                 if (center.high > p1.high && center.high > p2.high && center.high >= n1.high && center.high >= n2.high) {
