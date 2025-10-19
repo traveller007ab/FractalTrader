@@ -197,15 +197,16 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
             throw new Error('No valid data rows could be parsed from the file.');
         }
         await onRunBacktest(parsedData, file.name);
-// FIX: The error "Property 'name' does not exist on type 'unknown'" suggests an incorrect property access on an error object.
-// The original catch block was correct, but this more robust version handles non-Error objects gracefully
-// and prevents unhelpful messages like "[object Object]", which may resolve the underlying issue.
-      } catch (e) {
+      } catch (e: unknown) {
+        // FIX: Refactored complex error handling to be simpler and safer.
+        // This avoids potential unsafe property access on an 'unknown' type.
+        let message = 'An unknown error occurred while processing this file.';
         if (e instanceof Error) {
-          newErrors[file.name] = e.message;
-        } else {
-          newErrors[file.name] = 'An unknown error occurred while processing this file.';
+          message = e.message;
+        } else if (typeof e === 'string') {
+          message = e;
         }
+        newErrors[file.name] = message;
       }
     }
 

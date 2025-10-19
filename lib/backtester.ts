@@ -43,9 +43,9 @@ export async function runBacktestFromData(data: TimeSeriesData[], settings: Stra
         stopLossAtrMultiplier, takeProfitR_R, riskPercent
     } = settings;
 
-    const lookbackPeriod = 100; // Need at least 100 bars to calculate all indicators
+    const lookbackPeriod = 50; // Reduced lookback to accommodate smaller datasets
     if (data.length <= lookbackPeriod) {
-        throw new Error(`Insufficient data. Need at least ${lookbackPeriod} rows, but got ${data.length}.`);
+        throw new Error(`Insufficient data. Need at least ${lookbackPeriod + 1} rows, but got ${data.length}.`);
     }
 
     for (let i = lookbackPeriod; i < data.length; i++) {

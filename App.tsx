@@ -158,9 +158,16 @@ function App() {
         
         addToast('Backtest completed successfully!', 'success');
 
-    } catch (error: any) {
-        addToast(`Backtest failed: ${error.message}`, 'error');
+    } catch (error: unknown) {
+        let errorMessage = 'An unknown error occurred during backtest.';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        }
+        addToast(`Backtest failed: ${errorMessage}`, 'error');
         console.error('Backtest error:', error);
+        throw error; // Re-throw to be caught by the UI component
     }
   };
   
