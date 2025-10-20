@@ -22,7 +22,7 @@ const SettingInput: React.FC<{label: string; value: number; onChange: (value: nu
     </div>
 );
 
-// FIX: The component was named 'StrategySettings', same as the imported type, causing an error.
+// The component was named 'StrategySettings', same as the imported type.
 // The error is fixed by renaming the imported type. The component name remains the same to avoid breaking changes in other files.
 export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, onSettingsChange, defaultSettings }) => {
     const [localSettings, setLocalSettings] = useState(settings);
