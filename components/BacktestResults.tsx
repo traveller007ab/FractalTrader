@@ -61,8 +61,10 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
         const selectedFiles = event.target.files;
         if (!selectedFiles || selectedFiles.length === 0) return;
 
-        // FIX: Use a type guard to ensure we're dealing with File objects and correctly type the array. This resolves multiple downstream errors.
-        const newFiles = Array.from(selectedFiles).filter((file): file is File => file instanceof File && file.name.toLowerCase().endsWith('.csv'));
+        const newFiles: File[] = Array.from(selectedFiles).filter((file): file is File => {
+            return file instanceof File && (file.name.toLowerCase().endsWith('.csv') || file.webkitRelativePath.toLowerCase().endsWith('.csv'));
+        });
+        
         if (newFiles.length === 0) {
             alert('No .csv files found in the selection.');
             return;
@@ -74,13 +76,14 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                     header: false,
                     dynamicTyping: true,
                     skipEmptyLines: true,
-                    complete: (results: Papa.ParseResult<(string | number)[]>) => {
+                    complete: (results: Papa.ParseResult<(string | number)[]>, parsedFile: File) => {
+                        const targetFile = parsedFile instanceof File ? parsedFile : file;
                         if (results.errors.length > 0) {
-                           resolve({ id: file.name + Math.random(), file, status: 'failed', error: `Parsing error: ${results.errors[0].message}` });
+                           resolve({ id: targetFile.name + Math.random(), file: targetFile, status: 'failed', error: `Parsing error: ${results.errors[0].message}` });
                            return;
                         }
                         if (results.data.length < 2) {
-                           resolve({ id: file.name + Math.random(), file, status: 'failed', error: 'CSV must have at least one data row.' });
+                           resolve({ id: targetFile.name + Math.random(), file: targetFile, status: 'failed', error: 'CSV must have a header and at least one data row.' });
                            return;
                         }
 
@@ -98,7 +101,7 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
 
                         if (isHeaderless) {
                             for(let i=0; i<requiredHeaders.length; i++) colMap[requiredHeaders[i]] = i;
-                            body.unshift(headerRow); 
+                            body.unshift(headerRow as (string|number)[]); 
                         } else {
                              const foundHeaders = headerRow.map(h => String(h).toLowerCase().trim());
                              for(const key of requiredHeaders){
@@ -110,7 +113,7 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
 
                         const missingCols = requiredHeaders.filter(h => colMap[h] === undefined);
                         if (missingCols.length > 0) {
-                            resolve({ id: file.name + Math.random(), file, status: 'failed', error: `Missing columns: ${missingCols.join(', ')}` });
+                            resolve({ id: targetFile.name + Math.random(), file: targetFile, status: 'failed', error: `Missing columns: ${missingCols.join(', ')}` });
                             return;
                         }
                         
@@ -130,10 +133,11 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                         }).filter(d => !isNaN(d.open) && d.datetime !== 'Invalid Date');
                         
                         const sortedData = parsedData.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
-                        resolve({ id: file.name + Math.random(), file, data: sortedData, status: 'queued' });
+                        resolve({ id: targetFile.name + Math.random(), file: targetFile, data: sortedData, status: 'queued' });
                     },
-                    error: (error: Error) => {
-                        resolve({ id: file.name + Math.random(), file, status: 'failed', error: `PapaParse Error: ${error.message}` });
+                    error: (error: Error, errorFile: File) => {
+                        const targetFile = errorFile instanceof File ? errorFile : file;
+                        resolve({ id: targetFile.name + Math.random(), file: targetFile, status: 'failed', error: `PapaParse Error: ${error.message}` });
                     }
                 });
             } catch (e: unknown) {
@@ -147,7 +151,6 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
             setFiles(prev => [...prev, ...processedFiles]);
         });
         
-        // Reset both inputs
         if (fileInputRef.current) fileInputRef.current.value = "";
         if (folderInputRef.current) folderInputRef.current.value = "";
     };
@@ -174,13 +177,13 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                     let message = 'Unknown error';
                      if (e instanceof Error) {
                        message = e.message;
-                     } else if (e && typeof e === 'object' && 'message' in e && typeof (e as any).message === 'string') {
-                       message = (e as any).message;
+                     } else if (e && typeof e === 'object' && 'message' in e) {
+                       message = String((e as {message: unknown}).message);
                      }
                     setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'failed', error: message } : f));
                 }
             } else {
-                 setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'failed', error: "No data to process" } : f));
+                 setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'failed', error: file.error || "No data to process" } : f));
             }
         }
         setIsRunning(false);
@@ -231,13 +234,15 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                     multiple
                     onChange={handleFileChange}
                     className="hidden"
+                    accept=".csv"
                 />
                  <input
                     type="file"
                     ref={folderInputRef}
-                    webkitdirectory="true"
                     onChange={handleFileChange}
                     className="hidden"
+                    // @ts-ignore
+                    webkitdirectory="true"
                 />
                 <div className="flex gap-2">
                     <button
