@@ -1,13 +1,24 @@
-import React from 'react';
-import type { PerformanceMetrics, PnlDataPoint } from '../types';
+import React, { useState } from 'react';
+import type { PerformanceMetrics, PnlDataPoint, BacktestRun } from '../types';
 import { AnalyticsChart } from './AnalyticsChart';
-import { ChartIcon, DollarIcon, PercentIcon, LatencyIcon, UserIcon } from './icons';
+import { ChartIcon, DollarIcon, PercentIcon, LatencyIcon, UserIcon, BacktestIcon, SignalIcon, XCircleIcon } from './icons';
+
+interface BacktestPerformanceMetrics {
+  total_pnl: number;
+  avg_win_rate: number;
+  total_trades: number;
+  run_count: number;
+}
 
 interface PerformanceDashboardProps {
   metrics: PerformanceMetrics;
   pnlHistory: PnlDataPoint[];
   userPnl: number | null;
+  backtestMetrics: BacktestPerformanceMetrics;
+  backtestPnlHistory: PnlDataPoint[];
   loading: boolean;
+  activeBacktest: BacktestRun | null;
+  onClearActiveBacktest: () => void;
 }
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; }> = ({ title, value, icon }) => (
@@ -30,42 +41,120 @@ const StatCardSkeleton: React.FC = () => (
     </div>
 );
 
-export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metrics, pnlHistory, userPnl, loading }) => {
-  const statCardCount = userPnl !== null ? 5 : 4;
+export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metrics, pnlHistory, userPnl, backtestMetrics, backtestPnlHistory, loading, activeBacktest, onClearActiveBacktest }) => {
+  const [activeTab, setActiveTab] = useState<'live' | 'backtest'>('live');
+
+  const liveStatCardCount = userPnl !== null ? 5 : 4;
   
-  const pnlColor = metrics.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
-  const userPnlColor = userPnl !== null && userPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const TabButton: React.FC<{ tab: 'live' | 'backtest', children: React.ReactNode, icon: React.ReactNode }> = ({ tab, children, icon }) => (
+    <button
+      onClick={() => setActiveTab(tab)}
+      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+        activeTab === tab 
+          ? 'bg-brand-accent/20 text-brand-accent' 
+          : 'text-slate-400 hover:bg-slate-800'
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+
+  const renderBacktestView = () => {
+    if (activeBacktest) {
+        const metrics = activeBacktest.metrics;
+        return (
+             <div className="p-4 animate-fade-in-up">
+                 <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-md font-semibold text-slate-200 truncate" title={activeBacktest.strategy}>Focused Run: <span className="text-brand-accent">{activeBacktest.strategy}</span></h3>
+                     <button onClick={onClearActiveBacktest} className="flex items-center text-xs text-slate-400 hover:text-white transition-colors">
+                         <XCircleIcon className="w-4 h-4 mr-1"/>
+                         Show Aggregate
+                     </button>
+                 </div>
+                <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
+                    <StatCard title="Total P&L" value={`$${metrics?.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) ?? '0.00'}`} icon={<DollarIcon className="w-5 h-5"/>} />
+                    <StatCard title="Win Rate" value={`${metrics?.win_rate.toFixed(1) ?? '0.0'}%`} icon={<PercentIcon className="w-5 h-5"/>} />
+                    <StatCard title="Total Trades" value={metrics?.total_trades.toLocaleString() ?? '0'} icon={<ChartIcon className="w-5 h-5"/>} />
+                    <StatCard title="Profit Factor" value={metrics?.profit_factor.toFixed(2) ?? '0.00'} icon={<BacktestIcon className="w-5 h-5"/>} />
+                </div>
+                <div className="h-80">
+                    <AnalyticsChart data={metrics?.pnl_history || []} />
+                </div>
+             </div>
+        )
+    }
+    
+    // Default aggregated view
+    return (
+        <div className="p-4 animate-fade-in-up">
+            <h3 className="text-md font-semibold text-slate-200 mb-4">Aggregate of All Backtest Runs</h3>
+            {loading ? (
+                 <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
+                    {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+                </div>
+            ) : (
+                <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
+                    <StatCard title="Total Backtest P&L" value={`$${backtestMetrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} />
+                    <StatCard title="Avg. Win Rate" value={`${backtestMetrics.avg_win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
+                    <StatCard title="Total Trades" value={backtestMetrics.total_trades.toLocaleString()} icon={<ChartIcon className="w-5 h-5"/>} />
+                    <StatCard title="Total Runs" value={backtestMetrics.run_count.toLocaleString()} icon={<BacktestIcon className="w-5 h-5"/>} />
+                </div>
+            )}
+             <div className="h-80">
+            {loading ? (
+                <div className="w-full h-full bg-slate-800 rounded-lg animate-pulse"></div>
+            ) : (
+                <AnalyticsChart data={backtestPnlHistory} />
+            )}
+            </div>
+         </div>
+    );
+  }
 
   return (
     <div className="bg-container-bg rounded-lg shadow-lg border border-border-color">
-       <div className="p-4 border-b border-border-color flex items-center">
-        <ChartIcon className="w-6 h-6 mr-3 text-brand-accent" />
-        <h2 className="text-lg font-semibold text-slate-100">Performance Analytics</h2>
-      </div>
-      <div className="p-4">
-        {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-                {Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)}
-            </div>
-        ) : (
-            <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${statCardCount} gap-4 mb-6`}>
-              <StatCard title="Global P&L" value={`$${metrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} />
-              {userPnl !== null && (
-                 <StatCard title="My P&L" value={`$${userPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-5 h-5"/>} />
-              )}
-              <StatCard title="Win Rate" value={`${metrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
-              <StatCard title="Max Drawdown" value={`${metrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
-              <StatCard title="Avg. Latency" value={`${metrics.latency_ms}ms`} icon={<LatencyIcon className="w-5 h-5"/>} />
-            </div>
-        )}
-        <div className="h-80">
-          {loading ? (
-             <div className="w-full h-full bg-slate-800 rounded-lg animate-pulse"></div>
-          ) : (
-            <AnalyticsChart data={pnlHistory} />
-          )}
+       <div className="p-4 border-b border-border-color flex items-center justify-between">
+        <div className="flex items-center">
+            <ChartIcon className="w-6 h-6 mr-3 text-brand-accent" />
+            <h2 className="text-lg font-semibold text-slate-100">Performance Analytics</h2>
+        </div>
+        <div className="flex items-center space-x-2 p-1 bg-slate-950 rounded-lg">
+            <TabButton tab="live" icon={<SignalIcon className="w-5 h-5 mr-2" />}>Live Signals</TabButton>
+            <TabButton tab="backtest" icon={<BacktestIcon className="w-5 h-5 mr-2" />}>Backtests</TabButton>
         </div>
       </div>
+
+      {activeTab === 'live' && (
+        <div className="p-4 animate-fade-in-up">
+            <h3 className="text-md font-semibold text-slate-200 mb-4">Live Copied Signals Performance</h3>
+            {loading ? (
+                <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6`}>
+                    {Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)}
+                </div>
+            ) : (
+                <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${liveStatCardCount} gap-4 mb-6`}>
+                <StatCard title="Global P&L" value={`$${metrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} />
+                {userPnl !== null && (
+                    <StatCard title="My P&L" value={`$${userPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-5 h-5"/>} />
+                )}
+                <StatCard title="Win Rate" value={`${metrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
+                <StatCard title="Max Drawdown" value={`${metrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} />
+                <StatCard title="Avg. Latency" value={`${metrics.latency_ms}ms`} icon={<LatencyIcon className="w-5 h-5"/>} />
+                </div>
+            )}
+            <div className="h-80">
+            {loading ? (
+                <div className="w-full h-full bg-slate-800 rounded-lg animate-pulse"></div>
+            ) : (
+                <AnalyticsChart data={pnlHistory} />
+            )}
+            </div>
+        </div>
+      )}
+
+      {activeTab === 'backtest' && renderBacktestView()}
+
     </div>
   );
 };

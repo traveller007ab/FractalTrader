@@ -4,8 +4,9 @@ import { Session } from '@supabase/supabase-js';
 import { signalEngine } from './lib/signalEngine';
 import { useMarketData } from './hooks/useMarketData';
 import { runBacktestFromData } from './lib/backtester';
+import { Optimizer } from './lib/optimizer';
 import { defaultStrategySettings } from './lib/strategyConfig';
-import type { Signal, TimeSeriesData, StrategySettings, CopiedTrade } from './types';
+import type { Signal, TimeSeriesData, StrategySettings, CopiedTrade, BacktestRun } from './types';
 
 import { Header } from './components/Header';
 import { Auth } from './components/Auth';
@@ -25,7 +26,9 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [strategySettings, setStrategySettings] = useState<StrategySettings>(defaultStrategySettings);
-  
+  const [activeBacktest, setActiveBacktest] = useState<BacktestRun | null>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -43,7 +46,6 @@ function App() {
       setSession(session);
     });
     
-    // Set up a global error handler for the signal engine
     signalEngine.setOnError((error) => {
         if (error.message.includes('RATE_LIMIT_EXCEEDED')) {
             addToast('API credit limit reached. The live engine will pause for a moment.', 'error');
@@ -55,7 +57,6 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch user-specific settings on session load
   useEffect(() => {
     const fetchUserSettings = async () => {
       if (session?.user) {
@@ -71,12 +72,10 @@ function App() {
             if (data && data.strategy_settings) {
                 const fetchedSettings = data.strategy_settings as StrategySettings;
                 if (Object.keys(fetchedSettings).length > 0) {
-                     console.log('Loaded settings from profile:', fetchedSettings);
                      setStrategySettings(fetchedSettings);
                      signalEngine.updateSettings(fetchedSettings);
                 }
             } else {
-                console.log('No user settings found, using default.');
                 setStrategySettings(defaultStrategySettings);
                 signalEngine.updateSettings(defaultStrategySettings);
             }
@@ -93,7 +92,10 @@ function App() {
     fetchUserSettings();
   }, [session]);
 
-  const { loading, signals, backtests, pnlHistory, performanceMetrics, userPnl, copiedTrades, fetchData } = useMarketData(session?.user ?? null);
+  const { 
+      loading, signals, backtests, pnlHistory, performanceMetrics, 
+      userPnl, copiedTrades, fetchData, backtestPnlHistory, backtestPerformanceMetrics 
+  } = useMarketData(session?.user ?? null);
   
   useEffect(() => {
     if (session) {
@@ -119,63 +121,81 @@ function App() {
       user_id: session.user.id,
       executed_at: new Date().toISOString(),
       entry_price: signal.price,
-      // Simulate an immediate close with random P&L for demo purposes
       status: 'closed',
-      pnl: (Math.random() - 0.45) * 100 // Random PnL between approx -$45 and +$55
+      pnl: (Math.random() - 0.45) * 100
     };
     
     const { error } = await supabase.from('copied_trades').insert(trade);
 
     if (error) {
       addToast(`Error copying trade: ${error.message}`, 'error');
-      console.error(error);
     } else {
       addToast(`Successfully copied ${signal.symbol} ${signal.side} trade.`, 'success');
     }
   };
 
-  const handleRunBacktest = async (csvData: TimeSeriesData[], fileName: string) => {
+  const handleRunBacktest = async (csvData: TimeSeriesData[], fileName: string): Promise<void> => {
     if (!session?.user) {
       addToast('You must be logged in to run a backtest.', 'error');
       return;
     }
     
-    addToast(`Running backtest on ${fileName}...`, 'info');
-
     try {
-        const metrics = await runBacktestFromData(csvData, strategySettings);
+        const { metrics, pnlHistory } = await runBacktestFromData(csvData, strategySettings);
         const backtestRun = {
             user_id: session.user.id,
             strategy: `Fractal Shift (${fileName})`,
             params: strategySettings,
-            metrics: metrics,
+            metrics: { ...metrics, pnl_history: pnlHistory }, // Embed pnl history in metrics
             started_at: new Date().toISOString(),
             ended_at: new Date().toISOString(),
         };
 
-        const { error } = await supabase.from('backtest_runs').insert(backtestRun);
+        const { data, error } = await supabase.from('backtest_runs').insert(backtestRun).select().single();
         if (error) throw error;
         
-        addToast('Backtest completed successfully!', 'success');
+        setActiveBacktest(data as BacktestRun); // Set the active backtest for focused view
+        addToast('Backtest complete. Viewing focused results.', 'info');
 
     } catch (error: unknown) {
         let errorMessage = 'An unknown error occurred during backtest.';
         if (error instanceof Error) {
             errorMessage = error.message;
-        } else if (typeof error === 'string') {
-            errorMessage = error;
-        } else if (typeof error === 'object' && error !== null) {
-            errorMessage = (error as { message?: string }).message || 'Object error without message';
         }
-
         if (errorMessage.includes('Failed to fetch')) {
-             addToast(`Backtest ran, but failed to save results. Check network connection.`, 'error');
+             addToast(`Backtest ran, but failed to save results. Check network.`, 'error');
         } else {
             addToast(`Backtest failed: ${errorMessage}`, 'error');
         }
         
         console.error('Backtest error:', error);
-        throw error; // Re-throw to be caught by the UI component
+        throw error;
+    }
+  };
+
+  const handleOptimize = async (csvData: TimeSeriesData[]) => {
+    setIsOptimizing(true);
+    addToast('Starting strategy optimization...', 'info');
+
+    try {
+        const optimizer = new Optimizer(csvData, strategySettings);
+        optimizer.onProgress((progress, total) => {
+             addToast(`Optimizing... (${progress}/${total})`, 'info');
+        });
+
+        const bestSettings = await optimizer.run();
+
+        if (bestSettings) {
+            addToast('Optimization complete! Applying best settings.', 'success');
+            await handleSettingsChange(bestSettings);
+        } else {
+            addToast('Optimization did not find a better result.', 'info');
+        }
+    } catch (error) {
+        console.error("Optimization failed:", error);
+        addToast('Optimization failed.', 'error');
+    } finally {
+        setIsOptimizing(false);
     }
   };
   
@@ -189,15 +209,12 @@ function App() {
     signalEngine.updateSettings(newSettings);
     addToast('Strategy settings applied to live engine.', 'info');
 
-    // Persist to Supabase
-    // FIX: Removed updated_at as the column may not exist. Supabase can handle this automatically if configured.
     const { error } = await supabase
       .from('profiles')
       .upsert({ id: session.user.id, strategy_settings: newSettings });
     
     if (error) {
         addToast('Failed to save settings to your profile.', 'error');
-        console.error('Error saving settings:', error);
     } else {
         addToast('Settings saved to your profile.', 'success');
     }
@@ -213,12 +230,26 @@ function App() {
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-                <PerformanceDashboard metrics={performanceMetrics} pnlHistory={pnlHistory} userPnl={userPnl} loading={loading} />
+                <PerformanceDashboard 
+                    metrics={performanceMetrics} 
+                    pnlHistory={pnlHistory} 
+                    userPnl={userPnl}
+                    backtestMetrics={backtestPerformanceMetrics}
+                    backtestPnlHistory={backtestPnlHistory}
+                    activeBacktest={activeBacktest}
+                    onClearActiveBacktest={() => setActiveBacktest(null)}
+                    loading={loading} 
+                />
                 <SignalFeed signals={signals} onCopyTrade={handleCopyTrade} onRefresh={fetchData} loading={loading} copiedTrades={copiedTrades} user={session.user} />
             </div>
             <div className="lg:col-span-1 space-y-6">
                 <StrategySettingsComponent settings={strategySettings} onSettingsChange={handleSettingsChange} defaultSettings={defaultStrategySettings} />
-                <BacktestResults backtests={backtests} loading={loading} onRunBacktest={handleRunBacktest} />
+                <BacktestResults 
+                    backtests={backtests} 
+                    loading={loading || isOptimizing} 
+                    onRunBacktest={handleRunBacktest} 
+                    onOptimize={handleOptimize}
+                />
             </div>
         </div>
       </main>

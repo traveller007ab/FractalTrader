@@ -3,6 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 import type { Signal, CopiedTrade, BacktestRun, PerformanceMetrics, PnlDataPoint } from '../types';
 import type { User } from '@supabase/supabase-js';
 
+interface BacktestPerformanceMetrics {
+  total_pnl: number;
+  avg_win_rate: number;
+  total_trades: number;
+  run_count: number;
+}
+
 export function useMarketData(user: User | null) {
   const [loading, setLoading] = useState(true);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -17,6 +24,13 @@ export function useMarketData(user: User | null) {
     latency_ms: 0,
   });
   const [userPnl, setUserPnl] = useState<number | null>(null);
+  const [backtestPnlHistory, setBacktestPnlHistory] = useState<PnlDataPoint[]>([]);
+  const [backtestPerformanceMetrics, setBacktestPerformanceMetrics] = useState<BacktestPerformanceMetrics>({
+    total_pnl: 0,
+    avg_win_rate: 0,
+    total_trades: 0,
+    run_count: 0,
+  });
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -30,7 +44,7 @@ export function useMarketData(user: User | null) {
       const [signalsRes, tradesRes, backtestsRes] = await Promise.all([
         supabase.from('signals').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('copied_trades').select('*'),
-        supabase.from('backtest_runs').select('*').order('created_at', { ascending: false }).limit(10)
+        supabase.from('backtest_runs').select('*').order('created_at', { ascending: false }).limit(50)
       ]);
 
       if (signalsRes.error) throw signalsRes.error;
@@ -42,9 +56,7 @@ export function useMarketData(user: User | null) {
 
       setSignals(signalsRes.data || []);
       setCopiedTrades(allTrades);
-      setBacktests(backtestsRes.data || []);
-
-      // Calculate Metrics
+      
       const closedTrades = allTrades.filter(t => t.status === 'closed' && t.pnl != null);
       const totalPnl = closedTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
       const winningTrades = closedTrades.filter(t => (t.pnl || 0) > 0).length;
@@ -58,23 +70,44 @@ export function useMarketData(user: User | null) {
       setPerformanceMetrics({
         total_pnl: totalPnl,
         win_rate: winRate,
-        max_drawdown: 15.2, // Mocked for now
-        avg_return: 2.1, // Mocked for now
-        latency_ms: Math.floor(Math.random() * 50) + 20, // Mocked latency
+        max_drawdown: 15.2,
+        avg_return: 2.1,
+        latency_ms: Math.floor(Math.random() * 50) + 20,
       });
-
-      // Generate P&L History Chart Data
-      const pnlData: PnlDataPoint[] = closedTrades
+      
+      const livePnlHistory: PnlDataPoint[] = closedTrades
         .sort((a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime())
         .reduce((acc, trade) => {
             const lastPnl = acc.length > 0 ? acc[acc.length - 1].pnl : 0;
-            acc.push({
-                date: new Date(trade.executed_at).toLocaleDateString(),
-                pnl: lastPnl + (trade.pnl || 0)
-            });
+            acc.push({ date: new Date(trade.executed_at).toLocaleDateString(), pnl: lastPnl + (trade.pnl || 0) });
             return acc;
         }, [] as PnlDataPoint[]);
-      setPnlHistory(pnlData);
+      setPnlHistory(livePnlHistory);
+
+      const allBacktests = (backtestsRes.data || []).filter(b => b.metrics);
+      setBacktests(allBacktests);
+      
+      if (allBacktests.length > 0) {
+          const totalBacktestPnl = allBacktests.reduce((acc, b) => acc + (b.metrics?.total_pnl || 0), 0);
+          const totalWinRate = allBacktests.reduce((acc, b) => acc + (b.metrics?.win_rate || 0), 0);
+          const totalBacktestTrades = allBacktests.reduce((acc, b) => acc + (b.metrics?.total_trades || 0), 0);
+
+          setBacktestPerformanceMetrics({
+              total_pnl: totalBacktestPnl,
+              avg_win_rate: totalWinRate / allBacktests.length,
+              total_trades: totalBacktestTrades,
+              run_count: allBacktests.length,
+          });
+
+          const historicalPnl: PnlDataPoint[] = allBacktests
+            .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
+            .reduce((acc, run) => {
+                const lastPnl = acc.length > 0 ? acc[acc.length - 1].pnl : 0;
+                acc.push({ date: new Date(run.started_at).toLocaleDateString(), pnl: lastPnl + (run.metrics?.total_pnl || 0) });
+                return acc;
+            }, [] as PnlDataPoint[]);
+          setBacktestPnlHistory(historicalPnl);
+      }
 
     } catch (error) {
       console.error("Error fetching market data:", error);
@@ -89,34 +122,19 @@ export function useMarketData(user: User | null) {
 
   useEffect(() => {
     if (!user) return;
-
-    const signalChannel = supabase
-      .channel('public:signals')
+    const channel = supabase.channel('db-changes');
+    channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload) => {
         setSignals(currentSignals => [payload.new as Signal, ...currentSignals]);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'copied_trades' }, fetchData)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'backtest_runs'}, fetchData)
       .subscribe();
-      
-    const tradeChannel = supabase
-      .channel('public:copied_trades')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'copied_trades' }, () => {
-        fetchData(); // Re-fetch all data on trade changes to update metrics
-      })
-      .subscribe();
-      
-    const backtestChannel = supabase
-      .channel('public:backtest_runs')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'backtest_runs'}, () => {
-        fetchData(); // Re-fetch data to show new backtest run
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(signalChannel);
-      supabase.removeChannel(tradeChannel);
-      supabase.removeChannel(backtestChannel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user, fetchData]);
 
-  return { loading, signals, backtests, pnlHistory, performanceMetrics, userPnl, copiedTrades, fetchData };
+  return { 
+      loading, signals, backtests, pnlHistory, performanceMetrics, 
+      userPnl, copiedTrades, fetchData, backtestPnlHistory, backtestPerformanceMetrics 
+  };
 }

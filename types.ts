@@ -41,6 +41,7 @@ export interface BacktestMetrics {
   max_drawdown: number;
   profit_factor: number;
   total_trades: number;
+  pnl_history?: PnlDataPoint[];
 }
 
 export interface BacktestRun {
