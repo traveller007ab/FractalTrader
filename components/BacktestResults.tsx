@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import type { BacktestRun, TimeSeriesData } from '../types';
-import { BacktestIcon, ChartIcon, UploadIcon, CogIcon, SpinnerIcon, CheckCircleIcon, XCircleIcon, XMarkIcon } from './icons';
+import { BacktestIcon, ChartIcon, FolderOpenIcon, CogIcon, SpinnerIcon, CheckCircleIcon, XCircleIcon, XMarkIcon, StopIcon, DocumentPlusIcon } from './icons';
 import Papa from 'papaparse';
+import { Tooltip } from './Tooltip';
 
 interface BacktestResultsProps {
   backtests: BacktestRun[];
@@ -52,102 +53,111 @@ const BacktestListItem: React.FC<{ backtest: BacktestRun }> = ({ backtest }) => 
 export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loading, onRunBacktest, onOptimize }) => {
     const [files, setFiles] = useState<FileToProcess[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const folderInputRef = useRef<HTMLInputElement>(null);
     const stopRequested = useRef(false);
+    const [isRunning, setIsRunning] = useState(false);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = event.target.files;
         if (!selectedFiles || selectedFiles.length === 0) return;
 
-        const newFiles: File[] = Array.from(selectedFiles).filter(file => file.name.endsWith('.csv'));
+        // FIX: Use a type guard to ensure we're dealing with File objects and correctly type the array. This resolves multiple downstream errors.
+        const newFiles = Array.from(selectedFiles).filter((file): file is File => file instanceof File && file.name.toLowerCase().endsWith('.csv'));
         if (newFiles.length === 0) {
             alert('No .csv files found in the selection.');
             return;
         }
 
         const filePromises = newFiles.map(file => new Promise<FileToProcess>((resolve) => {
-            // FIX: Replaced `any` with a more specific type for the parsed CSV row data to improve type safety.
-             Papa.parse<(string | number)[]>(file, {
-                header: false, // We will auto-detect headers
-                dynamicTyping: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    if (results.errors.length > 0) {
-                       resolve({ id: file.name + Math.random(), file, status: 'failed', error: `Parsing error: ${results.errors[0].message}` });
-                       return;
-                    }
-                    if (results.data.length < 2) {
-                       resolve({ id: file.name + Math.random(), file, status: 'failed', error: 'CSV must have a header and at least one data row.' });
-                       return;
-                    }
+             try {
+                Papa.parse(file, {
+                    header: false,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: (results: Papa.ParseResult<(string | number)[]>) => {
+                        if (results.errors.length > 0) {
+                           resolve({ id: file.name + Math.random(), file, status: 'failed', error: `Parsing error: ${results.errors[0].message}` });
+                           return;
+                        }
+                        if (results.data.length < 2) {
+                           resolve({ id: file.name + Math.random(), file, status: 'failed', error: 'CSV must have at least one data row.' });
+                           return;
+                        }
 
-                    const header = results.data[0];
-                    const body = results.data.slice(1);
+                        const headerRow = results.data[0];
+                        let body = results.data.slice(1);
 
-                    const colMap: { [key: string]: number } = {};
-                    const requiredHeaders = ['datetime', 'open', 'high', 'low', 'close', 'volume'];
-                    const possibleHeaders: { [key: string]: string[] } = {
-                        datetime: ['datetime', 'date', 'timestamp', 'time'],
-                        open: ['open'], high: ['high'], low: ['low'], close: ['close'], volume: ['volume']
-                    };
-
-                    const isHeaderless = typeof header[0] === 'number' && typeof header[1] === 'number';
-
-                    if (isHeaderless) {
-                        for(let i=0; i<requiredHeaders.length; i++) colMap[requiredHeaders[i]] = i;
-                        body.unshift(header as any); // The first row was data
-                    } else {
-                         const foundHeaders = header.map(h => String(h).toLowerCase().trim());
-                         for(const key of requiredHeaders){
-                            const possible = possibleHeaders[key];
-                            const idx = foundHeaders.findIndex(h => possible.includes(h));
-                            if (idx !== -1) colMap[key] = idx;
-                         }
-                    }
-
-                    const missingCols = requiredHeaders.filter(h => colMap[h] === undefined);
-                    if (missingCols.length > 0) {
-                        resolve({ id: file.name + Math.random(), file, status: 'failed', error: `Missing columns: ${missingCols.join(', ')}` });
-                        return;
-                    }
-                    
-                    const parsedData = body.map(row => {
-                        // FIX: Improved date parsing to handle both string and number date/timestamps.
-                        const dtValue = row[colMap.datetime];
-                        const date = typeof dtValue === 'number' ? new Date(dtValue * 1000) : new Date(dtValue as string);
-                        return {
-                            datetime: date.toISOString(),
-                            open: Number(row[colMap.open]),
-                            high: Number(row[colMap.high]),
-                            low: Number(row[colMap.low]),
-                            close: Number(row[colMap.close]),
-                            volume: Number(row[colMap.volume]),
+                        const colMap: { [key: string]: number } = {};
+                        const requiredHeaders = ['datetime', 'open', 'high', 'low', 'close', 'volume'];
+                        const possibleHeaders: { [key: string]: string[] } = {
+                            datetime: ['datetime', 'date', 'timestamp', 'time'],
+                            open: ['open'], high: ['high'], low: ['low'], close: ['close'], volume: ['volume']
                         };
-                    }).filter(d => !isNaN(d.open) && d.datetime !== 'Invalid Date');
-                    
-                    const sortedData = parsedData.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
-                    resolve({ id: file.name + Math.random(), file, data: sortedData, status: 'queued' });
-                },
-                error: (error: Error) => {
-                    resolve({ id: file.name + Math.random(), file, status: 'failed', error: `PapaParse Error: ${error.message}` });
-                }
-             });
+                        
+                        const isHeaderless = typeof headerRow[0] === 'number' && typeof headerRow[1] === 'number';
+
+                        if (isHeaderless) {
+                            for(let i=0; i<requiredHeaders.length; i++) colMap[requiredHeaders[i]] = i;
+                            body.unshift(headerRow); 
+                        } else {
+                             const foundHeaders = headerRow.map(h => String(h).toLowerCase().trim());
+                             for(const key of requiredHeaders){
+                                const possible = possibleHeaders[key];
+                                const idx = foundHeaders.findIndex(h => possible.includes(h));
+                                if (idx !== -1) colMap[key] = idx;
+                             }
+                        }
+
+                        const missingCols = requiredHeaders.filter(h => colMap[h] === undefined);
+                        if (missingCols.length > 0) {
+                            resolve({ id: file.name + Math.random(), file, status: 'failed', error: `Missing columns: ${missingCols.join(', ')}` });
+                            return;
+                        }
+                        
+                        const parsedData = body.map(row => {
+                            const dtValue = row[colMap.datetime];
+                            const date = typeof dtValue === 'number' 
+                                ? new Date(dtValue * (String(dtValue).length === 10 ? 1000 : 1)) 
+                                : new Date(dtValue as string);
+                            return {
+                                datetime: date.toISOString(),
+                                open: Number(row[colMap.open]),
+                                high: Number(row[colMap.high]),
+                                low: Number(row[colMap.low]),
+                                close: Number(row[colMap.close]),
+                                volume: Number(row[colMap.volume]),
+                            };
+                        }).filter(d => !isNaN(d.open) && d.datetime !== 'Invalid Date');
+                        
+                        const sortedData = parsedData.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+                        resolve({ id: file.name + Math.random(), file, data: sortedData, status: 'queued' });
+                    },
+                    error: (error: Error) => {
+                        resolve({ id: file.name + Math.random(), file, status: 'failed', error: `PapaParse Error: ${error.message}` });
+                    }
+                });
+            } catch (e: unknown) {
+                 let message = 'Unexpected parsing error';
+                 if (e instanceof Error) message = e.message;
+                 resolve({ id: file.name + Math.random(), file, status: 'failed', error: message });
+            }
         }));
 
         Promise.all(filePromises).then(processedFiles => {
-            setFiles(prev => [...prev, ...processedFiles.filter(f => f.status !== 'failed')]);
-            const failedFiles = processedFiles.filter(f => f.status === 'failed');
-            if (failedFiles.length > 0) {
-                alert(`Could not load ${failedFiles.length} files due to errors:\n${failedFiles.map(f => `${f.file.name}: ${f.error}`).join('\n')}`);
-            }
+            setFiles(prev => [...prev, ...processedFiles]);
         });
         
+        // Reset both inputs
         if (fileInputRef.current) fileInputRef.current.value = "";
+        if (folderInputRef.current) folderInputRef.current.value = "";
     };
     
     const handleRunClick = async () => {
+        setIsRunning(true);
         stopRequested.current = false;
         
-        for (const file of files) {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             if (stopRequested.current) {
                 console.log('Backtest run stopped by user.');
                 break;
@@ -162,14 +172,18 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                     setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'succeeded' } : f));
                 } catch (e: unknown) {
                     let message = 'Unknown error';
-                     if (e instanceof Error) message = e.message;
-                     else if (typeof e === 'object' && e && 'message' in e && typeof e.message === 'string') message = e.message;
+                     if (e instanceof Error) {
+                       message = e.message;
+                     } else if (e && typeof e === 'object' && 'message' in e && typeof (e as any).message === 'string') {
+                       message = (e as any).message;
+                     }
                     setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'failed', error: message } : f));
                 }
             } else {
                  setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'failed', error: "No data to process" } : f));
             }
         }
+        setIsRunning(false);
     };
     
     const handleOptimizeClick = async () => {
@@ -188,14 +202,19 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
             alert('Please upload exactly one valid CSV file to run optimization.');
         }
     };
-
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
-    };
+    
+    const handleFilesUploadClick = () => fileInputRef.current?.click();
+    const handleFolderUploadClick = () => folderInputRef.current?.click();
+    
+    const handleStopClick = () => {
+        stopRequested.current = true;
+    }
 
     const handleClear = () => {
         setFiles([]);
     }
+
+    const allDone = !isRunning && files.length > 0 && files.every(f => f.status === 'succeeded' || f.status === 'failed');
 
     return (
         <div className="bg-container-bg rounded-lg shadow-lg border border-border-color">
@@ -209,20 +228,33 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                  <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept=".csv"
-                    className="hidden"
                     multiple
-                    //@ts-ignore - webkitdirectory is a non-standard but widely supported attribute
-                    webkitdirectory=""
+                    onChange={handleFileChange}
+                    className="hidden"
                 />
-                <button
-                    onClick={handleUploadClick}
-                    className="w-full inline-flex justify-center items-center px-4 py-2 border border-dashed border-slate-600 text-sm font-medium rounded-md text-slate-300 hover:bg-slate-800 hover:border-slate-500 transition-colors"
-                >
-                    <UploadIcon className="w-5 h-5 mr-2" />
-                    Upload Files or Folder
-                </button>
+                 <input
+                    type="file"
+                    ref={folderInputRef}
+                    webkitdirectory="true"
+                    onChange={handleFileChange}
+                    className="hidden"
+                />
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleFilesUploadClick}
+                        className="w-full inline-flex justify-center items-center px-4 py-2 border border-dashed border-slate-600 text-sm font-medium rounded-md text-slate-300 hover:bg-slate-800 hover:border-slate-500 transition-colors"
+                    >
+                        <DocumentPlusIcon className="w-5 h-5 mr-2" />
+                        Upload Files
+                    </button>
+                    <button
+                        onClick={handleFolderUploadClick}
+                        className="w-full inline-flex justify-center items-center px-4 py-2 border border-dashed border-slate-600 text-sm font-medium rounded-md text-slate-300 hover:bg-slate-800 hover:border-slate-500 transition-colors"
+                    >
+                        <FolderOpenIcon className="w-5 h-5 mr-2" />
+                        Upload Folder
+                    </button>
+                </div>
                 
                 {files.length > 0 && (
                     <div className="space-y-3">
@@ -237,18 +269,38 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                                 </div>
                             ))}
                         </div>
-                         <div className="flex items-center justify-between gap-4">
-                            <button onClick={handleRunClick} disabled={loading} className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md shadow-sm text-slate-200 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-wait">
-                                <BacktestIcon className="w-5 h-5 mr-2" />
-                                Run All ({files.length})
-                            </button>
-                            <button onClick={handleOptimizeClick} disabled={loading || files.length !== 1} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed">
-                                <CogIcon className="w-5 h-5 mr-2" />
-                                Optimize
-                            </button>
-                            <button onClick={handleClear} disabled={loading} className="p-2 text-slate-400 hover:text-white bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50">
-                                <XMarkIcon className="w-5 h-5"/>
-                            </button>
+                        <div className="flex items-center justify-between gap-2">
+                            {isRunning ? (
+                                <Tooltip content="Stop the current backtest queue after the running file is complete.">
+                                     <button onClick={handleStopClick} className="w-full inline-flex justify-center items-center px-4 py-2 border border-red-500/50 text-sm font-medium rounded-md shadow-sm text-red-300 bg-red-500/20 hover:bg-red-500/30">
+                                        <StopIcon className="w-5 h-5 mr-2" />
+                                        Stop
+                                    </button>
+                                </Tooltip>
+                            ) : (
+                                <button onClick={handleRunClick} disabled={loading || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md shadow-sm text-slate-200 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-wait">
+                                    <BacktestIcon className="w-5 h-5 mr-2" />
+                                    Run All ({files.filter(f=>f.status === 'queued' || f.status === 'failed').length})
+                                </button>
+                            )}
+                            <div className="w-full">
+                                <Tooltip content="Run dozens of backtests with different parameters to find the most profitable settings for this specific dataset.">
+                                    {/* Wrapper div for tooltip on disabled button */}
+                                    <div className="w-full">
+                                        <button onClick={handleOptimizeClick} disabled={loading || files.length !== 1 || isRunning} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <CogIcon className="w-5 h-5 mr-2" />
+                                            Optimize
+                                        </button>
+                                    </div>
+                                </Tooltip>
+                            </div>
+                            { (allDone || !isRunning) &&
+                                <Tooltip content="Clear the list of uploaded files.">
+                                    <button onClick={handleClear} disabled={loading} className="p-2 text-slate-400 hover:text-white bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50">
+                                        <XMarkIcon className="w-5 h-5"/>
+                                    </button>
+                                </Tooltip>
+                            }
                         </div>
                     </div>
                 )}

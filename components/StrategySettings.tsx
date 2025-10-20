@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 // FIX: Renamed imported type to avoid name collision with the component.
 import type { StrategySettings as StrategySettingsType } from '../types';
 import { CogIcon } from './icons';
+import { Tooltip } from './Tooltip';
 
 interface StrategySettingsProps {
   settings: StrategySettingsType;
@@ -11,7 +12,9 @@ interface StrategySettingsProps {
 
 const SettingInput: React.FC<{label: string; value: number; onChange: (value: number) => void; step?: number; title?: string;}> = ({ label, value, onChange, step = 0.1, title }) => (
     <div>
-        <label className="block text-xs font-medium text-slate-400 mb-1" title={title}>{label}</label>
+        <Tooltip content={title || ''}>
+          <label className="block text-xs font-medium text-slate-400 mb-1 cursor-help">{label}</label>
+        </Tooltip>
         <input
             type="number"
             value={value}

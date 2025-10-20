@@ -3,6 +3,7 @@ import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
 import { SignalCard } from './SignalCard';
 import { RefreshIcon, SignalIcon } from './icons';
+import { Tooltip } from './Tooltip';
 
 interface SignalFeedProps {
   signals: Signal[];
@@ -40,8 +41,16 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Entry Price</th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Stop Loss</th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Take Profit</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Confidence</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                <Tooltip content="The bot's calculated confidence in this signal's success, based on multiple factors like volume and trend alignment.">
+                    <span className="cursor-help border-b border-dashed border-slate-500">Confidence</span>
+                </Tooltip>
+              </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                <Tooltip content="Win/Loss is based on your copied trades. Active signals are recent. Expired signals are older than 1 hour and may no longer be relevant.">
+                     <span className="cursor-help border-b border-dashed border-slate-500">Status</span>
+                </Tooltip>
+              </th>
               <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Action</th>
             </tr>
           </thead>
