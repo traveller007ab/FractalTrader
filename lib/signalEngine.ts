@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import { getTimeSeries } from './twelveDataClient';
 import type { Signal, SignalMetadata, StrategySettings } from '../types';
-import { defaultStrategySettings } from './strategyConfig';
+import { strategyConfig, getSymbolSettings } from './strategyRBSv2Config';
 
 // Technical Analysis helper functions
 const calculateSMA = (data: { close: number }[], period: number): number[] => {
@@ -23,7 +23,7 @@ const calculateATR = (data: { high: number; low: number; close: number }[], peri
   }
   
   const atr: number[] = [];
-  if (trs.length > 0) {
+  if (trs.length >= period) {
       let firstAtr = trs.slice(0, period).reduce((acc, val) => acc + val, 0) / period;
       atr.push(firstAtr);
       for (let i = period; i < trs.length; i++) {
@@ -35,23 +35,18 @@ const calculateATR = (data: { high: number; low: number; close: number }[], peri
 };
 
 const median = (arr: number[]): number => {
+    if(arr.length === 0) return 0;
     const sorted = [...arr].sort((a,b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// Configuration for symbols and their respective exchanges
-const symbolConfig = {
-    'BTC/USD': { exchange: 'BINANCE' },
-    'ETH/USD': { exchange: 'BINANCE' },
-    'XAU/USD': { exchange: 'OANDA' },
-};
-const symbols = Object.keys(symbolConfig);
+const symbols = Object.keys(strategyConfig.symbolSettings);
 
 class SignalEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
-  private lastSignalInfo: Map<string, { timestamp: number; price: number; side: 'buy' | 'sell' }> = new Map();
-  private settings: StrategySettings = defaultStrategySettings;
+  private lastSignalInfo: Map<string, { timestamp: number; entry: number; side: 'buy' | 'sell' }> = new Map();
+  private settings: StrategySettings = strategyConfig.base;
   private currentSymbolIndex = 0;
   private onError: ((error: Error) => void) | null = null;
 
@@ -60,7 +55,7 @@ class SignalEngine {
   }
 
   public updateSettings(newSettings: StrategySettings) {
-    console.log('[SignalEngine] Updating settings:', newSettings);
+    console.log('[SignalEngine] Base settings updated. Note: Per-symbol settings from config still apply.', newSettings);
     this.settings = newSettings;
   }
 
@@ -71,9 +66,10 @@ class SignalEngine {
     try {
       await this.processSymbol(symbol);
     } catch (error: any) {
-      console.error(`[SignalEngine] Error processing symbol ${symbol}:`, error);
+      const errorMessage = `[SignalEngine] Error processing symbol ${symbol}: ${error.message}`;
+      console.error(errorMessage, error);
       if (this.onError) {
-          this.onError(error);
+          this.onError(new Error(errorMessage));
       }
     }
     
@@ -82,12 +78,14 @@ class SignalEngine {
   }
   
   private async processSymbol(symbol: string) {
+    const symbolSettings = getSymbolSettings(symbol, this.settings);
+    
     const { 
-        smaPeriod, atrPeriod, shiftAtrMultiplier, shiftPctThreshold, 
+        smaPeriod, atrPeriod, shiftAtrMultiplier,
         proximityAtrMultiplier, atrFilterMultiplier, volumeFilterMultiplier,
         confidenceThreshold, cooldownBars, duplicateThresholdPct,
-        stopLossAtrMultiplier, takeProfitR_R, riskPercent, exposureCapPercent
-    } = this.settings;
+        stopLossAtrMultiplier, takeProfitR_R, riskPercent
+    } = symbolSettings;
     
     // 1. Fetch Data
     const [dailyDataRes, fifteenMinDataRes] = await Promise.all([
@@ -95,7 +93,6 @@ class SignalEngine {
       getTimeSeries({ symbol, interval: '15min', outputsize: 100 }) // For execution logic
     ]);
     
-    // Reverse data to have it in chronological order (oldest -> newest)
     const dailyData = dailyDataRes.reverse();
     const fifteenMinData = fifteenMinDataRes.reverse();
     
@@ -105,136 +102,125 @@ class SignalEngine {
     }
     
     const latestBar = fifteenMinData[fifteenMinData.length - 1];
-    
-    // --- Rule S1: Compute previous day structure ---
-    const PDH = dailyData[dailyData.length - 2].high; // -2 is the last *completed* day
-    const PDL = dailyData[dailyData.length - 2].low;
+    const metadata: Partial<SignalMetadata> = {};
 
-    // --- Technical Indicators ---
-    const smas = calculateSMA(fifteenMinData, smaPeriod);
-    const atrs = calculateATR(fifteenMinData, atrPeriod);
-    const dailyAtrs = calculateATR(dailyData, atrPeriod);
-
-    if (smas.length < 4 || atrs.length < 1 || dailyAtrs.length < 30) {
-        console.warn(`[SignalEngine] Insufficient indicator data for ${symbol}.`);
-        return;
-    }
-    
-    const latestSma = smas[smas.length - 1];
-    const prevSma3 = smas[smas.length - 4];
-    const latestAtr = atrs[atrs.length - 1];
-    const medianAtr50 = median(atrs.slice(-50));
-    const medianVolume50 = median(fifteenMinData.slice(-50).map(d => d.volume));
-
-    const metadata: Partial<SignalMetadata> = { atr: latestAtr, PDH, PDL, volatility_filter: 'pass' };
-
-    // --- Rule V1: ATR Filter ---
-    if (latestAtr < medianAtr50 * atrFilterMultiplier) {
-      metadata.volatility_filter = `fail_low_volatility (ATR: ${latestAtr.toFixed(2)} < ${ (medianAtr50 * atrFilterMultiplier).toFixed(2)})`;
-      return; // Skip signal
-    }
-
-    // --- Rule D1: Fractal Detection ---
-    let lastFractalHigh = null, lastFractalLow = null;
+    // --- Rule 1: Detection - Fractal & Shift Logic ---
+    let lastPivotHigh = null, lastPivotLow = null;
     for (let i = fifteenMinData.length - 3; i >= 2; i--) {
-        const center = fifteenMinData[i];
-        const p1 = fifteenMinData[i-1], p2 = fifteenMinData[i-2];
-        const n1 = fifteenMinData[i+1], n2 = fifteenMinData[i+2];
+        const p2 = fifteenMinData[i-2], p1 = fifteenMinData[i-1], center = fifteenMinData[i], n1 = fifteenMinData[i+1], n2 = fifteenMinData[i+2];
         if (center.high > p1.high && center.high > p2.high && center.high >= n1.high && center.high >= n2.high) {
-            if (!lastFractalHigh) lastFractalHigh = { price: center.high, index: i };
+            if (!lastPivotHigh) lastPivotHigh = { price: center.high, index: i };
         }
         if (center.low < p1.low && center.low < p2.low && center.low <= n1.low && center.low <= n2.low) {
-            if (!lastFractalLow) lastFractalLow = { price: center.low, index: i };
+            if (!lastPivotLow) lastPivotLow = { price: center.low, index: i };
         }
-        if(lastFractalHigh && lastFractalLow) break;
+        if(lastPivotHigh && lastPivotLow) break;
     }
 
-    if (!lastFractalHigh || !lastFractalLow) return; // Not enough fractal structure
+    if (!lastPivotHigh || !lastPivotLow) return;
+
+    const latestAtr = calculateATR(fifteenMinData, atrPeriod).pop();
+    if(!latestAtr) return;
+    metadata.atr = latestAtr;
 
     let shift: 'buy' | 'sell' | null = null;
-    let entryPrice = latestBar.close;
+    const entryPrice = latestBar.close;
 
-    // --- Rule D2: Shift Trigger ---
-    if (lastFractalHigh.index < lastFractalLow.index && entryPrice > lastFractalLow.price + Math.max(latestAtr * shiftAtrMultiplier, lastFractalLow.price * shiftPctThreshold)) {
+    if (lastPivotHigh.index > lastPivotLow.index && entryPrice > lastPivotHigh.price + latestAtr * shiftAtrMultiplier) {
       shift = 'buy';
-    } else if (lastFractalLow.index < lastFractalHigh.index && entryPrice < lastFractalHigh.price - Math.max(latestAtr * shiftAtrMultiplier, lastFractalHigh.price * shiftPctThreshold)) {
+    } else if (lastPivotLow.index > lastPivotHigh.index && entryPrice < lastPivotLow.price - latestAtr * shiftAtrMultiplier) {
       shift = 'sell';
     }
-
     if (!shift) return;
 
-    // --- Rule T1 & T2: Trend Confirmation ---
-    const trend = latestSma > prevSma3 ? 'bull' : 'bear';
+    // --- Rule 2: Trend Confirmation ---
+    const smas = calculateSMA(fifteenMinData, smaPeriod);
+    if(smas.length < 4) return;
+    const smaSlope = smas[smas.length - 1] - smas[smas.length - 4];
+    const trend = smaSlope > 0 ? 'bull' : 'bear';
     metadata.trend_15m = trend;
     if ((shift === 'buy' && trend !== 'bull') || (shift === 'sell' && trend !== 'bear')) {
-        return; // Reject, trend mismatch
+        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Trend mismatch.`);
+        return;
     }
 
-    // --- Daily Structure Rules ---
+    // --- Rule 3: Daily Context ---
+    const PDH = dailyData[dailyData.length - 2].high;
+    const PDL = dailyData[dailyData.length - 2].low;
+    metadata.PDH = PDH;
+    metadata.PDL = PDL;
+    
     metadata.pd_distance_status = 'safe';
-    if (shift === 'buy' && Math.abs(entryPrice - PDH) <= (latestAtr * proximityAtrMultiplier)) {
+    if (shift === 'buy' && Math.abs(entryPrice - PDH) <= latestAtr * proximityAtrMultiplier) {
         metadata.pd_distance_status = 'blocked_near_pdh';
-        return; // Block BUY
+        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Too close to PDH.`);
+        return;
     }
-    if (shift === 'sell' && Math.abs(entryPrice - PDL) <= (latestAtr * proximityAtrMultiplier)) {
+    if (shift === 'sell' && Math.abs(entryPrice - PDL) <= latestAtr * proximityAtrMultiplier) {
         metadata.pd_distance_status = 'blocked_near_pdl';
-        return; // Block SELL
+        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Too close to PDL.`);
+        return;
     }
 
-    // --- Confidence & Emission Rules ---
-    let confidence = 0;
-    // Base confidence for trend match
-    confidence += 0.40; 
+    // --- Rule 4: Volatility & Volume ---
+    const atrs = calculateATR(fifteenMinData, atrPeriod).slice(-50);
+    const medianAtr = median(atrs);
+    if (latestAtr < medianAtr * atrFilterMultiplier) {
+        metadata.volatility_filter = 'fail_low_volatility';
+        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Low volatility.`);
+        return;
+    }
+    metadata.volatility_filter = 'pass';
+    const volume50 = fifteenMinData.slice(-50).map(d => d.volume);
+    const medianVolume = median(volume50);
+    metadata.volume_spike = latestBar.volume >= medianVolume * volumeFilterMultiplier;
+
+    // --- Rule 6: Signal Confidence Model ---
+    let confidence = 0.0;
+    confidence += 0.40; // Trend Agreement
+    if (latestAtr > medianAtr) confidence += 0.15; // ATR Strength
+    if (metadata.volume_spike) confidence += 0.10; // Volume Spike
+    confidence += 0.15; // PD Distance (passed proximity filter)
+    if (shift === 'buy' && entryPrice > PDH) confidence += 0.10; // PD breakout bonus
+    if (shift === 'sell' && entryPrice < PDL) confidence += 0.10; // PD breakdown bonus
     
-    // Rule V2: Volume Filter
-    metadata.volume_spike = latestBar.volume >= medianVolume50 * volumeFilterMultiplier;
-    confidence += metadata.volume_spike ? 0.12 * 1.0 : 0.12 * 0.5;
-
-    // ATR Strength
-    confidence += 0.10 * Math.min(1.0, latestAtr / medianAtr50);
-
-    // Daily Structure
-    if (shift === 'buy' && entryPrice > PDH) confidence += 0.10; // Rule S3 Bonus
-    else if (shift === 'sell' && entryPrice < PDL) confidence += 0.10; // Rule S3 Bonus
-    else if (entryPrice < PDH && entryPrice > PDL) confidence -= 0.15; // Rule S4 Bias
-    else confidence += 0.15 * 0.7; // Default for being far
+    // Mocked components for now
+    confidence += 0.15 * 0.7; // Mock recent win rate at 70%
+    confidence += 0.05; // Mock liquidity as good
     
-    // Mocked components
-    confidence += 0.18 * 0.6; // Mock recent success at 60%
-    confidence += 0.05 * 1.0; // Mock liquidity as good
+    if (confidence < confidenceThreshold) {
+        console.log(`[SignalEngine] ${symbol} ${shift} signal skipped: Low confidence (${confidence.toFixed(2)}).`);
+        return;
+    }
 
-    // --- Rule C2: Emission Condition ---
-    if (confidence < confidenceThreshold) return;
-
-    // --- Lifecycle Rules ---
+    // --- Rule 7: Signal Lifecycle ---
     const lastSignal = this.lastSignalInfo.get(`${symbol}_${shift}`);
-    // L1: Cooldown
-    if (lastSignal && (Date.now() - lastSignal.timestamp) < (cooldownBars * 15 * 60 * 1000)) return; 
-    // L2: Duplicates
-    if (lastSignal && Math.abs(entryPrice - lastSignal.price) / lastSignal.price < duplicateThresholdPct) return;
+    if (lastSignal && (Date.now() - lastSignal.timestamp) < (cooldownBars * 15 * 60 * 1000)) {
+        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Cooldown period active.`);
+        return;
+    }
+    if (lastSignal && Math.abs(entryPrice - lastSignal.entry) / lastSignal.entry < duplicateThresholdPct) {
+        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Duplicate entry price.`);
+        return;
+    }
 
-
-    // --- Risk Management Rules ---
+    // --- Rule 5: Risk Management ---
     const stopDistance = latestAtr * stopLossAtrMultiplier;
     const stop_loss = shift === 'buy' ? entryPrice - stopDistance : entryPrice + stopDistance;
     const take_profit = shift === 'buy' ? entryPrice + (stopDistance * takeProfitR_R) : entryPrice - (stopDistance * takeProfitR_R);
     
     const accountEquity = 100000; // Mock account equity
-    const riskUsd = accountEquity * riskPercent; // R2
+    const riskUsd = accountEquity * (riskPercent / 100);
     metadata.risk_usd = riskUsd;
-    let size = riskUsd / stopDistance;
+    const size = riskUsd / stopDistance;
     
-    if (size * entryPrice > accountEquity * exposureCapPercent) { // R3
-      size = (accountEquity * exposureCapPercent) / entryPrice;
-    }
-
-    // --- Signal Emission ---
-    const newSignal: Omit<Signal, 'id' | 'created_at'> = {
-      strategy: 'fractal_shift_rbs_v1',
+    // --- Rule 8: Output Schema ---
+    const newSignal: Omit<Signal, 'signal_id' | 'timestamp'> = {
+      strategy: 'fractal_shift_rbs_v2',
       symbol: symbol,
-      exchange: symbolConfig[symbol as keyof typeof symbolConfig].exchange as Signal['exchange'],
+      exchange: strategyConfig.symbolSettings[symbol as keyof typeof strategyConfig.symbolSettings].exchange as Signal['exchange'],
       side: shift,
-      price: entryPrice,
+      entry: entryPrice,
       size,
       stop_loss,
       take_profit,
@@ -244,11 +230,12 @@ class SignalEngine {
     
     console.log(`[SignalEngine] Emitting NEW SIGNAL for ${symbol}:`, newSignal);
     
+    // Fix: This error is resolved by adding the 'profiles' table to the Database interface in types.ts, which corrects the Supabase client's type inference.
     const { error } = await supabase.from('signals').insert(newSignal);
     if (error) {
       console.error('[SignalEngine] Error inserting signal:', error);
     } else {
-        this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), price: entryPrice, side: shift });
+        this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), entry: entryPrice, side: shift });
     }
   }
 
@@ -257,7 +244,7 @@ class SignalEngine {
       console.log('[SignalEngine] Engine already running.');
       return;
     }
-    console.log('[SignalEngine] Starting real-time strategy engine...');
+    console.log('[SignalEngine] Starting real-time strategy engine (RBS v2)...');
     this.runStrategy(); // Run immediately
     this.intervalId = setInterval(() => this.runStrategy(), intervalMs);
   }

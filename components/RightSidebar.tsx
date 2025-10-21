@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { StrategySettings } from './StrategySettings';
 import { BacktestCenter } from './BacktestCenter';
 import { BeakerIcon, ListBulletIcon } from './icons';
-import type { StrategySettings as StrategySettingsType, BacktestRun, TimeSeriesData } from '../types';
-import type { FileWithStatus } from '../App';
+import type { StrategySettings as StrategySettingsType, BacktestRun } from '../types';
+import type { FileWithStatus, OptimizationData } from '../App';
 
 interface RightSidebarProps {
     strategySettings: StrategySettingsType;
@@ -17,8 +17,8 @@ interface RightSidebarProps {
     backtestProgress: { current: number, total: number };
     setBacktestProgress: React.Dispatch<React.SetStateAction<{ current: number, total: number }>>;
     stopBacktestRef: React.MutableRefObject<boolean>;
-    onRunBacktest: (file: File, parsedData: TimeSeriesData[]) => Promise<void>;
-    onOptimize: (file: File, parsedData: TimeSeriesData[]) => void;
+    onRunBacktest: (file: File, parsedData: any[]) => Promise<void>;
+    onOptimize: (files: OptimizationData[]) => void;
     onSessionStart: () => void;
     recentBacktests: BacktestRun[];
     onViewBacktest: (run: BacktestRun) => void;

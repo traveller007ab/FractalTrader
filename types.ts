@@ -10,18 +10,18 @@ export interface SignalMetadata {
 }
 
 export interface Signal {
-  id: string;
+  signal_id: string;
   strategy: string;
   symbol: string;
   exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA';
   side: 'buy' | 'sell';
   size: number;
-  price: number;
+  entry: number;
   stop_loss: number;
   take_profit: number;
   confidence: number;
   metadata?: Partial<SignalMetadata>;
-  created_at: string;
+  timestamp: string;
 }
 
 export interface CopiedTrade {
@@ -41,6 +41,8 @@ export interface BacktestMetrics {
   max_drawdown: number;
   profit_factor: number;
   total_trades: number;
+  grossProfit?: number;
+  grossLoss?: number;
   pnl_history?: PnlDataPoint[];
 }
 
@@ -78,7 +80,6 @@ export interface TimeSeriesData {
 
 export interface StrategySettings {
   shiftAtrMultiplier: number;
-  shiftPctThreshold: number;
   smaPeriod: number;
   proximityAtrMultiplier: number;
   atrPeriod: number;
@@ -87,7 +88,6 @@ export interface StrategySettings {
   stopLossAtrMultiplier: number;
   takeProfitR_R: number;
   riskPercent: number;
-  exposureCapPercent: number;
   confidenceThreshold: number;
   cooldownBars: number;
   duplicateThresholdPct: number;
@@ -104,9 +104,25 @@ export interface ToastMessage {
 export interface Database {
   public: {
     Tables: {
+      // Fix: Add definition for the 'profiles' table to resolve type errors with Supabase client.
+      profiles: {
+        Row: {
+          id: string;
+          strategy_settings: StrategySettings | null;
+        };
+        Insert: {
+          id: string;
+          strategy_settings: StrategySettings;
+        };
+        Update: Partial<{
+          id: string;
+          strategy_settings: StrategySettings;
+        }>;
+      };
       backtest_runs: {
         Row: BacktestRun;
-        Insert: Omit<BacktestRun, 'id'>;
+        // Fix: Changed from Omit<BacktestRun, 'id'> because the client generates and inserts the UUID.
+        Insert: BacktestRun;
         Update: Partial<BacktestRun>;
       };
       copied_trades: {
@@ -116,9 +132,16 @@ export interface Database {
       };
       signals: {
           Row: Signal;
-          Insert: Omit<Signal, 'id' | 'created_at'>;
+          Insert: Omit<Signal, 'signal_id' | 'timestamp'>;
           Update: Partial<Signal>;
       }
+    };
+    // Fix: Add empty Views and Functions to the Database interface to fully conform to the expected structure and resolve type inference issues with the Supabase client.
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
     };
   };
 }

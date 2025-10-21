@@ -10,7 +10,8 @@ interface AnimatedNumberProps {
 
 export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ value, duration = 500, formatter }) => {
   const [displayValue, setDisplayValue] = useState(value);
-  const frameRef = useRef<number>();
+  // Fix: Correctly type the ref to allow an undefined initial value, resolving the "Expected 1 arguments" error.
+  const frameRef = useRef<number | undefined>(undefined);
   const startValueRef = useRef(value);
   const startTimeRef = useRef(Date.now());
 

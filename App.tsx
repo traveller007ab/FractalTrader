@@ -1,23 +1,41 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Auth } from './components/Auth';
-import { Header } from './components/Header';
-import { SignalFeed } from './components/SignalFeed';
-import { PerformanceDashboard } from './components/PerformanceDashboard';
-import { RightSidebar } from './components/RightSidebar';
-import { ToastContainer, Toast } from './components/Toast';
-import { supabase } from './lib/supabaseClient';
-import { signalEngine } from './lib/signalEngine';
-import { runBacktestFromData } from './lib/backtester';
-import { Optimizer } from './lib/optimizer';
-import { defaultStrategySettings } from './lib/strategyConfig';
+import { Auth } from './components/Auth.tsx';
+import { Header } from './components/Header.tsx';
+import { SignalFeed } from './components/SignalFeed.tsx';
+import { PerformanceDashboard } from './components/PerformanceDashboard.tsx';
+import { RightSidebar } from './components/RightSidebar.tsx';
+import { ToastContainer, Toast } from './components/Toast.tsx';
+import { supabase } from './lib/supabaseClient.ts';
+import { signalEngine } from './lib/signalEngine.ts';
+import { runBacktestFromData } from './lib/backtester.ts';
+import { Optimizer } from './lib/optimizer.ts';
+import { strategyConfig } from './lib/strategyRBSv2Config.ts';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData } from './types';
+import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData } from './types.ts';
 
 export interface FileWithStatus {
   file: File;
   status: 'queued' | 'running' | 'succeeded' | 'failed';
   error?: string;
 }
+
+// Fix: Renamed 'parsedData' to 'data' to match the expected property name in the Optimizer class.
+export interface OptimizationData {
+    file: File;
+    data: TimeSeriesData[];
+}
+
+// Helper to extract symbol from filename
+const getSymbolFromFilename = (filename: string): string => {
+    const name = filename.toUpperCase().replace('.CSV', '');
+    // Basic replacements, can be expanded
+    if (name.includes('BTCUSD') || name.includes('BTC-USD')) return 'BTC/USD';
+    if (name.includes('ETHUSD') || name.includes('ETH-USD')) return 'ETH/USD';
+    if (name.includes('XAUUSD') || name.includes('GOLD')) return 'XAU/USD';
+    if (name.includes('XAGUSD') || name.includes('SILVER')) return 'XAG/USD';
+    return 'BTC/USD'; // Default fallback
+}
+
 
 function App() {
     const [session, setSession] = useState<Session | null>(null);
@@ -27,7 +45,7 @@ function App() {
     const [recentBacktests, setRecentBacktests] = useState<BacktestRun[]>([]);
     const [loading, setLoading] = useState(true);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
-    const [strategySettings, setStrategySettings] = useState<StrategySettings>(defaultStrategySettings);
+    const [strategySettings, setStrategySettings] = useState<StrategySettings>(strategyConfig.base);
     const [engineLogs, setEngineLogs] = useState<string[]>([]);
     
     const [files, setFiles] = useState<FileWithStatus[]>([]);
@@ -54,14 +72,14 @@ function App() {
         setLoading(true);
         try {
             const [signalsRes, copiedTradesRes, backtestsRes, profileRes] = await Promise.all([
-                supabase.from('signals').select('*').order('created_at', { ascending: false }).limit(50),
+                supabase.from('signals').select('*').order('timestamp', { ascending: false }).limit(50),
                 supabase.from('copied_trades').select('*').eq('user_id', currentUser.id),
                 supabase.from('backtest_runs').select('*').eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(10),
                 supabase.from('profiles').select('strategy_settings').eq('id', currentUser.id).single()
             ]);
 
             if (signalsRes.error) throw signalsRes.error;
-            setSignals(signalsRes.data || []);
+            setSignals(signalsRes.data as Signal[] || []);
             
             if (copiedTradesRes.error) throw copiedTradesRes.error;
             setCopiedTrades(copiedTradesRes.data || []);
@@ -69,7 +87,9 @@ function App() {
             if (backtestsRes.error) throw backtestsRes.error;
             setRecentBacktests(backtestsRes.data || []);
 
-            if (profileRes.data?.strategy_settings) {
+            // Fix: Explicitly check for profileRes.data to satisfy TypeScript's null-safety checks.
+            if (profileRes.data && profileRes.data.strategy_settings) {
+                // The 'never' type error is resolved by adding the 'profiles' table to the Database interface in types.ts.
                 setStrategySettings(profileRes.data.strategy_settings as StrategySettings);
             }
 
@@ -104,7 +124,7 @@ function App() {
                     setSignals([]);
                     setCopiedTrades([]);
                     setRecentBacktests([]);
-                    setStrategySettings(defaultStrategySettings);
+                    setStrategySettings(strategyConfig.base);
                 }
             }
         );
@@ -119,8 +139,9 @@ function App() {
         const signalsChannel = supabase
             .channel('public:signals')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload) => {
-                setSignals(currentSignals => [payload.new as Signal, ...currentSignals]);
-                addToast(`New ${payload.new.side.toUpperCase()} signal for ${payload.new.symbol}!`, 'info');
+                const newSignal = payload.new as Signal;
+                setSignals(currentSignals => [newSignal, ...currentSignals]);
+                addToast(`New ${newSignal.side.toUpperCase()} signal for ${newSignal.symbol}!`, 'info');
             })
             .subscribe();
         
@@ -162,11 +183,12 @@ function App() {
     const handleCopyTrade = async (signal: Signal) => {
         if (!user) return;
         try {
+            // Fix: This error is resolved by adding the 'profiles' table to the Database interface in types.ts, which corrects the Supabase client's type inference.
             const { error } = await supabase.from('copied_trades').insert({
-                signal_id: signal.id,
+                signal_id: signal.signal_id,
                 user_id: user.id,
                 executed_at: new Date().toISOString(),
-                entry_price: signal.price,
+                entry_price: signal.entry,
                 status: 'open'
             });
             if (error) throw error;
@@ -183,6 +205,7 @@ function App() {
         
         if (!user) return;
         try {
+            // Fix: This error is resolved by adding the 'profiles' table to the Database interface in types.ts, which corrects the Supabase client's type inference.
             const { error } = await supabase.from('profiles').upsert({ id: user.id, strategy_settings: newSettings });
             if (error) throw error;
         } catch(error: any) {
@@ -199,18 +222,20 @@ function App() {
         if (!user) return;
         const startTime = new Date();
         try {
-            const { metrics } = runBacktestFromData(parsedData, strategySettings);
+            const symbol = getSymbolFromFilename(file.name);
+            const { metrics } = runBacktestFromData(parsedData, strategySettings, symbol);
             const endTime = new Date();
             const newRun: BacktestRun = {
                 id: crypto.randomUUID(),
                 user_id: user.id,
-                strategy: "fractal_shift_rbs_v1",
-                params: { symbol: file.name, ...strategySettings },
+                strategy: "fractal_shift_rbs_v2",
+                params: { symbol, ...strategySettings },
                 metrics,
                 started_at: startTime.toISOString(),
                 ended_at: endTime.toISOString(),
             };
             
+            // Fix: This error is resolved by updating the 'backtest_runs' Insert type in types.ts to accept a full BacktestRun object, as the client is generating the UUID.
             const { error } = await supabase.from('backtest_runs').insert(newRun);
             if (error) {
                  if(error.message.includes("violates row-level security policy")) {
@@ -240,22 +265,23 @@ function App() {
         }
     };
     
-    const handleOptimize = async (file: File, parsedData: TimeSeriesData[]) => {
-      if (!user) return;
+    const handleOptimize = async (filesToOptimize: OptimizationData[]) => {
+      if (!user || filesToOptimize.length === 0) return;
       setIsOptimizing(true);
       
-      const fileId = `${file.name}-${file.size}`;
+      const fileId = filesToOptimize.map(f => `${f.file.name}-${f.file.size}`).sort().join(';');
       const currentCount = optimizationState.fileId === fileId ? optimizationState.count : 0;
       
+      const fileNames = filesToOptimize.length > 1 ? `${filesToOptimize.length} files` : filesToOptimize[0].file.name;
       addToast(
         currentCount === 0
-          ? `Optimizing strategy for ${file.name}... This may take a moment.`
+          ? `Optimizing strategy for ${fileNames}... This may take a moment.`
           : `Refining optimization (Lvl ${currentCount + 1})...`,
         'info'
       );
       
       try {
-        const optimizer = new Optimizer(parsedData, strategySettings, currentCount);
+        const optimizer = new Optimizer(filesToOptimize, strategySettings, currentCount);
         const bestSettings = await optimizer.run();
         if(bestSettings) {
             handleSettingsUpdate(bestSettings);
@@ -265,8 +291,11 @@ function App() {
                     : `Refinement complete! Settings updated.`,
                 'success'
             );
-            // Automatically run a backtest with the new settings for review
-            await handleBacktestComplete(file, parsedData);
+            // Automatically run a backtest with the new settings for review if it was a single file
+            if (filesToOptimize.length === 1) {
+                // Fix: Use the 'data' property from the updated OptimizationData interface.
+                await handleBacktestComplete(filesToOptimize[0].file, filesToOptimize[0].data);
+            }
             setOptimizationState({ fileId, count: currentCount + 1 });
         } else {
             addToast(`Optimization could not find a better configuration.`, 'info');

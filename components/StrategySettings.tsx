@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 // Fix: Resolve name conflict between imported type and component by aliasing the type.
 import type { StrategySettings as StrategySettingsType } from '../types';
-import { ChevronDownIcon } from './icons';
-import { Tooltip } from './Tooltip';
+import { ChevronDownIcon } from './icons.tsx';
+import { Tooltip } from './Tooltip.tsx';
 
 interface StrategySettingsProps {
   settings: StrategySettingsType;
@@ -55,22 +55,23 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
   return (
     <div className="p-4 space-y-6">
         <div className="space-y-4">
-             <h3 className="text-md font-semibold text-slate-200">Risk Management</h3>
+             <h3 className="text-md font-semibold text-slate-200">Risk Management (Base Settings)</h3>
              <div className="grid grid-cols-2 gap-4">
-                <SettingInput label="Risk %" value={localSettings.riskPercent} name="riskPercent" step={0.001} onChange={handleSettingChange} tooltip="Percentage of total equity to risk per trade."/>
-                <SettingInput label="R:R Ratio" value={localSettings.takeProfitR_R} name="takeProfitR_R" step={0.1} onChange={handleSettingChange} tooltip="The ratio of take profit distance to stop loss distance."/>
-                <SettingInput label="Stop Loss ATR" value={localSettings.stopLossAtrMultiplier} name="stopLossAtrMultiplier" step={0.1} onChange={handleSettingChange} tooltip="Multiplier of the Average True Range (ATR) to set the stop loss distance."/>
+                <SettingInput label="Risk %" value={localSettings.riskPercent} name="riskPercent" step={0.1} onChange={handleSettingChange} tooltip="Base percentage of total equity to risk per trade. Symbol-specific settings may override this."/>
+                <SettingInput label="R:R Ratio" value={localSettings.takeProfitR_R} name="takeProfitR_R" step={0.1} onChange={handleSettingChange} tooltip="Base ratio of take profit to stop loss. Symbol-specific settings may override this."/>
+                <SettingInput label="Stop Loss ATR" value={localSettings.stopLossAtrMultiplier} name="stopLossAtrMultiplier" step={0.1} onChange={handleSettingChange} tooltip="Base ATR multiplier for stop loss. Symbol-specific settings may override this."/>
              </div>
              
-             <h3 className="text-md font-semibold text-slate-200 pt-2">Strategy Parameters</h3>
+             <h3 className="text-md font-semibold text-slate-200 pt-2">Strategy Parameters (Base Settings)</h3>
              <div className="grid grid-cols-2 gap-4">
-                 <SettingInput label="SMA Period" value={localSettings.smaPeriod} name="smaPeriod" step={1} onChange={handleSettingChange} tooltip="The lookback period for the Simple Moving Average used for trend detection."/>
-                 <SettingInput label="ATR Period" value={localSettings.atrPeriod} name="atrPeriod" step={1} onChange={handleSettingChange} tooltip="The lookback period for the Average True Range (ATR) calculation."/>
-                 <SettingInput label="Shift ATR Mult" value={localSettings.shiftAtrMultiplier} name="shiftAtrMultiplier" step={0.05} onChange={handleSettingChange} tooltip="ATR multiplier used to confirm a significant 'shift' away from a fractal."/>
+                 <SettingInput label="SMA Period" value={localSettings.smaPeriod} name="smaPeriod" step={1} onChange={handleSettingChange} tooltip="Lookback period for the Simple Moving Average (SMA) for trend detection."/>
+                 <SettingInput label="ATR Period" value={localSettings.atrPeriod} name="atrPeriod" step={1} onChange={handleSettingChange} tooltip="Lookback period for the Average True Range (ATR) calculation."/>
+                 <SettingInput label="Shift ATR Mult" value={localSettings.shiftAtrMultiplier} name="shiftAtrMultiplier" step={0.05} onChange={handleSettingChange} tooltip="Base ATR multiplier to confirm a 'shift'. Symbol-specific settings may override this."/>
              </div>
+             <p className="text-xs text-slate-500 text-center pt-1">Note: These are base settings. The engine uses specific, optimized parameters for each symbol (e.g., BTC/USD, XAU/USD).</p>
 
-             <button onClick={handleSave} className="w-full mt-4 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent">
-                Update Live Settings
+             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent">
+                Update Base Live Settings
             </button>
         </div>
 

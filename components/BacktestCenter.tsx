@@ -1,9 +1,16 @@
 import React, { useRef, useState } from 'react';
 import Papa from 'papaparse';
 import type { BacktestRun, TimeSeriesData } from '../types';
-import type { FileWithStatus } from '../App';
+import type { FileWithStatus, OptimizationData } from '../App';
 import { DocumentPlusIcon, FolderOpenIcon, PlayIcon, CogIcon, StopIcon, XMarkIcon, SpinnerIcon, CheckCircleIcon, XCircleIcon } from './icons';
 import { Tooltip } from './Tooltip';
+
+// Fix: Add module declaration to extend React's HTML attributes for the non-standard 'webkitdirectory' property.
+declare module 'react' {
+    interface InputHTMLAttributes<T> {
+        webkitdirectory?: string;
+    }
+}
 
 interface RecentRunsListProps {
   runs: BacktestRun[];
@@ -48,7 +55,7 @@ interface BacktestCenterProps {
     setBacktestProgress: React.Dispatch<React.SetStateAction<{ current: number, total: number }>>;
     stopBacktestRef: React.MutableRefObject<boolean>;
     onRunBacktest: (file: File, parsedData: TimeSeriesData[]) => Promise<void>;
-    onOptimize: (file: File, parsedData: TimeSeriesData[]) => void;
+    onOptimize: (files: OptimizationData[]) => void;
     onSessionStart: () => void;
     recentBacktests: BacktestRun[];
     onViewBacktest: (run: BacktestRun) => void;
@@ -116,15 +123,25 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
     };
     
     const handleOptimizeClick = async () => {
-        if(files.length !== 1) return;
-        const fileWithStatus = files[0];
-        try {
-            const parsedData = await parseCsv(fileWithStatus.file);
-            onOptimize(fileWithStatus.file, parsedData);
-        } catch (e: unknown) {
-             const error = e as Error;
-             console.error("Error parsing file for optimization:", error);
-             setFiles(prev => prev.map(f => f.file.name === fileWithStatus.file.name ? { ...f, status: 'failed', error: error.message } : f));
+        if (files.length < 1) return;
+        
+        setParsing(true);
+        const filesToOptimize: OptimizationData[] = [];
+        for (const fileWithStatus of files) {
+            try {
+                const parsedData = await parseCsv(fileWithStatus.file);
+                // Fix: Use 'data' instead of 'parsedData' to align with the updated OptimizationData interface.
+                filesToOptimize.push({ file: fileWithStatus.file, data: parsedData });
+            } catch (e: unknown) {
+                 const error = e as Error;
+                 console.error("Error parsing file for optimization:", error);
+                 setFiles(prev => prev.map(f => f.file.name === fileWithStatus.file.name ? { ...f, status: 'failed', error: `Parse failed: ${error.message}` } : f));
+            }
+        }
+        setParsing(false);
+        
+        if (filesToOptimize.length > 0) {
+            onOptimize(filesToOptimize);
         }
     }
 
@@ -195,7 +212,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
         });
     };
     
-    const fileId = files.length === 1 ? `${files[0].file.name}-${files[0].file.size}` : null;
+    const fileId = files.length > 0 ? files.map(f => `${f.file.name}-${f.file.size}`).sort().join(';') : null;
     const isRefining = fileId && optimizationState.fileId === fileId && optimizationState.count > 0;
 
     return (
@@ -266,11 +283,11 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                      <Tooltip content={
                         isRefining
                             ? `Run a deeper optimization based on the current settings. (Level ${optimizationState.count + 1})`
-                            : "Find the best parameters for this dataset. Only enabled for a single file."
+                            : "Find the best parameters by testing against all queued datasets."
                      }>
-                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || files.length !== 1} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed">
-                            {isOptimizing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
-                            {isOptimizing ? "Optimizing..." : (isRefining ? `Refine (Lvl ${optimizationState.count + 1})` : "Optimize Strategy")}
+                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isOptimizing || parsing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
+                            {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : (isRefining ? `Refine (Lvl ${optimizationState.count + 1})` : "Optimize Strategy"))}
                         </button>
                     </Tooltip>
                 </div>

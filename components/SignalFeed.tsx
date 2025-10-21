@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
-import { SignalCard } from './SignalCard';
+import { SignalCard } from './SignalCard.tsx';
 // Fix: Add .tsx extension to icons import
 import { RefreshIcon, SignalIcon } from './icons.tsx';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from './Tooltip.tsx';
 
 interface SignalFeedProps {
   signals: Signal[];
@@ -22,8 +22,8 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
     if (signals.length > 0) {
         // Simple way to detect a new signal is just checking the first one
         const latestSignal = signals[0];
-        if (latestSignal.id !== newSignalId) {
-            setNewSignalId(latestSignal.id);
+        if (latestSignal.signal_id !== newSignalId) {
+            setNewSignalId(latestSignal.signal_id);
         }
     }
   }, [signals, newSignalId]);
@@ -69,7 +69,7 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
           </thead>
           <tbody className="bg-container-bg divide-y divide-border-color">
             {signals.map(signal => (
-              <SignalCard key={signal.id} signal={signal} onCopyTrade={onCopyTrade} copiedTrades={copiedTrades} user={user} isNew={signal.id === newSignalId} />
+              <SignalCard key={signal.signal_id} signal={signal} onCopyTrade={onCopyTrade} copiedTrades={copiedTrades} user={user} isNew={signal.signal_id === newSignalId} />
             ))}
           </tbody>
         </table>

@@ -1,9 +1,8 @@
 import React from 'react';
 import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
-// Fix: Add .tsx extension to icons import
 import { CopyIcon } from './icons.tsx';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from './Tooltip.tsx';
 
 interface SignalCardProps {
   signal: Signal;
@@ -22,7 +21,7 @@ const getStatus = (signal: Signal, copiedTrade?: CopiedTrade): { text: string; c
         }
         return { text: 'Copied', color: 'text-sky-400' };
     }
-    const signalAgeHours = (Date.now() - new Date(signal.created_at).getTime()) / (1000 * 60 * 60);
+    const signalAgeHours = (Date.now() - new Date(signal.timestamp).getTime()) / (1000 * 60 * 60);
     return signalAgeHours > 1 
       ? { text: 'Expired', color: 'text-slate-500' }
       : { text: 'Active', color: 'text-amber-400' };
@@ -31,7 +30,7 @@ const getStatus = (signal: Signal, copiedTrade?: CopiedTrade): { text: string; c
 
 export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
   const isBuy = signal.side === 'buy';
-  const copiedTrade = copiedTrades.find(t => t.signal_id === signal.id && t.user_id === user.id);
+  const copiedTrade = copiedTrades.find(t => t.signal_id === signal.signal_id && t.user_id === user.id);
   const status = getStatus(signal, copiedTrade);
 
   const formatPrice = (price: number) => {
@@ -49,9 +48,9 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
   return (
     <tr className={rowClass}>
       <td className="px-4 py-3 text-sm font-medium text-slate-200 whitespace-nowrap">{signal.symbol}</td>
-      <td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">{new Date(signal.created_at).toLocaleTimeString()}</td>
+      <td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">{new Date(signal.timestamp).toLocaleTimeString()}</td>
       <td className={`px-4 py-3 text-sm font-semibold whitespace-nowrap ${isBuy ? 'text-emerald-400' : 'text-red-400'}`}>{signal.side.toUpperCase()}</td>
-      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.price)}</td>
+      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.entry)}</td>
       <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
       <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
       <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>

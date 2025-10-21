@@ -80,7 +80,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
         trades: metrics.total_trades,
         profit_factor: metrics.profit_factor,
         pnlHistory: metrics.pnl_history || [], // Renamed from pnl_history
-        fileName: (activeBacktest.params as any).symbol || 'Focused Run'
+        fileName: activeBacktest.params.symbol || 'Focused Run'
     };
   }, [activeBacktest]);
   
@@ -114,8 +114,10 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
           <StatCard title="Total P&L" value={displayMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from this session."/>
           <StatCard title="Win Rate" value={displayMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of trades that were profitable."/>
           {/* Use 'in' operator to check for property existence, as value could be 0 */}
-          {isBacktestTab && 'runs' in displayMetrics && !focusedBacktestMetrics && <StatCard title="Total Runs" value={displayMetrics.runs} formatter={v => v.toFixed(0)} tooltip="Total backtests completed in this session." />}
-          {isBacktestTab && 'profit_factor' in displayMetrics && focusedBacktestMetrics && <StatCard title="Profit Factor" value={displayMetrics.profit_factor} formatter={v => v.toFixed(2)} tooltip="Gross profit divided by gross loss." />}
+          {/* Fix: Cast displayMetrics to any to resolve incorrect 'unknown' type inference from TypeScript. */}
+          {isBacktestTab && 'runs' in displayMetrics && !focusedBacktestMetrics && <StatCard title="Total Runs" value={(displayMetrics as any).runs} formatter={v => v.toFixed(0)} tooltip="Total backtests completed in this session." />}
+          {/* Fix: Cast displayMetrics to any to resolve incorrect 'unknown' type inference from TypeScript. */}
+          {isBacktestTab && 'profit_factor' in displayMetrics && focusedBacktestMetrics && <StatCard title="Profit Factor" value={(displayMetrics as any).profit_factor} formatter={v => v.toFixed(2)} tooltip="Gross profit divided by gross loss." />}
           <StatCard title="Total Trades" value={displayMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of closed trades in this session." />
         </div>
       </div>

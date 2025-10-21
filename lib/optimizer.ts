@@ -1,114 +1,201 @@
-// Fix: Add .ts extension to backtester import
 import { runBacktestFromData } from './backtester.ts';
-import type { StrategySettings, TimeSeriesData } from '../types';
+import type { StrategySettings, TimeSeriesData, BacktestMetrics } from '../types';
 
-// Helper to generate a numerical range around a center point
-const createRange = (center: number, step: number, points: number): number[] => {
-    const range = new Set<number>();
-    const start = center - Math.floor(points / 2) * step;
-    for (let i = 0; i < points; i++) {
-        range.add(start + i * step);
-    }
-    return Array.from(range).filter(v => v > 0); // Ensure parameters are positive
-};
+type OptimizableParams = 'smaPeriod' | 'stopLossAtrMultiplier' | 'takeProfitR_R';
+
+// Helper to extract symbol from filename (duplicated from App.tsx for modularity)
+const getSymbolFromFilename = (filename: string): string => {
+    const name = filename.toUpperCase().replace('.CSV', '');
+    if (name.includes('BTCUSD') || name.includes('BTC-USD')) return 'BTC/USD';
+    if (name.includes('ETHUSD') || name.includes('ETH-USD')) return 'ETH/USD';
+    if (name.includes('XAUUSD') || name.includes('GOLD')) return 'XAU/USD';
+    if (name.includes('XAGUSD') || name.includes('SILVER')) return 'XAG/USD';
+    return 'BTC/USD'; // Default fallback
+}
 
 export class Optimizer {
-    private data: TimeSeriesData[];
+    private datasets: { file: File; data: TimeSeriesData[]; symbol: string }[];
     private baselineSettings: StrategySettings;
     private onProgressCallback: ((progress: number, total: number) => void) | null = null;
     private iteration: number;
 
-    constructor(data: TimeSeriesData[], baselineSettings: StrategySettings, iteration: number = 0) {
-        this.data = data;
+    constructor(
+        datasets: { file: File, data: TimeSeriesData[] }[], 
+        baselineSettings: StrategySettings, 
+        iteration: number = 0
+    ) {
+        this.datasets = datasets.map(d => ({
+            ...d,
+            symbol: getSymbolFromFilename(d.file.name)
+        }));
         this.baselineSettings = baselineSettings;
         this.iteration = iteration;
-    }
-
-    private generateRanges(): { [key in keyof typeof paramConfig]: number[] } {
-        const { iteration, baselineSettings } = this;
-
-        if (iteration === 0) {
-            // First run: Wide, coarse search to find a good general area
-            return {
-                smaPeriod: [15, 20, 25, 30],
-                stopLossAtrMultiplier: [1.0, 1.5, 2.0, 2.5],
-                takeProfitR_R: [1.5, 2.0, 2.5, 3.0]
-            };
-        }
-
-        // Subsequent runs: Finer, "deep study" search around the best-found parameters
-        const smaStep = iteration === 1 ? 2 : 1;
-        const smaPoints = iteration === 1 ? 5 : 3;
-
-        return {
-            smaPeriod: createRange(baselineSettings.smaPeriod, smaStep, smaPoints).map(v => Math.round(v)),
-            stopLossAtrMultiplier: createRange(baselineSettings.stopLossAtrMultiplier, 0.2, 5).map(v => parseFloat(v.toFixed(2))),
-            takeProfitR_R: createRange(baselineSettings.takeProfitR_R, 0.2, 5).map(v => parseFloat(v.toFixed(2)))
-        };
     }
 
     public onProgress(callback: (progress: number, total: number) => void) {
         this.onProgressCallback = callback;
     }
 
-    public async run(): Promise<StrategySettings | null> {
-        const paramRanges = this.generateRanges();
-        const combinations: StrategySettings[] = [];
+    private async evaluateSettings(settings: StrategySettings): Promise<{ score: number; settings: StrategySettings }> {
+        const runResults: { metrics: BacktestMetrics | null }[] = [];
+        for (const dataset of this.datasets) {
+            try {
+                const { metrics } = runBacktestFromData(dataset.data, settings, dataset.symbol);
+                runResults.push({ metrics });
+            } catch (error) {
+                runResults.push({ metrics: null });
+            }
+        }
 
-        // Generate all combinations of parameters
+        const validRuns = runResults.filter(r => r.metrics && r.metrics.total_trades > 5);
+        const totalTrades = validRuns.reduce((sum, r) => sum + (r.metrics?.total_trades ?? 0), 0);
+        
+        // A strategy is invalid if it doesn't produce enough trades on all datasets or in total.
+        if (validRuns.length < this.datasets.length || totalTrades < this.datasets.length * 10) {
+            return { score: -Infinity, settings };
+        }
+
+        // --- NEW ROBUSTNESS SCORING ---
+        const profitableRuns = validRuns.filter(r => (r.metrics?.total_pnl ?? -1) >= 0);
+
+        // 1. Strict Consistency Check: Reject any strategy that isn't profitable on ALL datasets.
+        if (profitableRuns.length < this.datasets.length) {
+            return { score: -Infinity, settings };
+        }
+
+        // If we reach here, all runs were profitable. Now we evaluate the quality.
+        const aggregateMetrics = {
+            total_pnl: 0,
+            grossProfit: 0,
+            grossLoss: 0,
+            max_drawdown: 0,
+            winning_trades: 0,
+        };
+        let worstProfitFactor = Infinity;
+
+        validRuns.forEach(run => {
+            const metrics = run.metrics!;
+            aggregateMetrics.total_pnl += metrics.total_pnl;
+            aggregateMetrics.grossProfit += metrics.grossProfit ?? 0;
+            aggregateMetrics.grossLoss += metrics.grossLoss ?? 0;
+            aggregateMetrics.max_drawdown = Math.max(aggregateMetrics.max_drawdown, metrics.max_drawdown);
+            aggregateMetrics.winning_trades += Math.round((metrics.win_rate / 100) * metrics.total_trades);
+            
+            if (metrics.profit_factor < worstProfitFactor) {
+                worstProfitFactor = metrics.profit_factor;
+            }
+        });
+
+        const win_rate = (aggregateMetrics.winning_trades / totalTrades) * 100;
+        let aggregate_profit_factor = aggregateMetrics.grossProfit / aggregateMetrics.grossLoss;
+        if (aggregateMetrics.grossLoss === 0) {
+            aggregate_profit_factor = aggregateMetrics.grossProfit > 0 ? 9999 : 1;
+        }
+        if (isNaN(aggregate_profit_factor)) aggregate_profit_factor = 1;
+        
+        // 2. Robustness Factor: The final score is modulated by how well the strategy performed on its WORST dataset.
+        const robustnessFactor = Math.min(worstProfitFactor, 5); // Cap at 5 to prevent outliers from dominating
+
+        const pnl = aggregateMetrics.total_pnl > 0 ? aggregateMetrics.total_pnl : 1;
+
+        // The score is a blend of overall performance and robustness.
+        const score = (
+            Math.pow(pnl, 1.2) *
+            Math.pow(aggregate_profit_factor, 1.5) *
+            Math.pow(win_rate / 100, 1.5) *
+            robustnessFactor // The performance of the weakest link is a direct multiplier.
+        ) / (1 + (aggregateMetrics.max_drawdown / 100));
+
+        return { score, settings };
+    }
+
+    private async runGridSearch(): Promise<StrategySettings | null> {
+        const paramRanges = {
+            smaPeriod: [20, 26, 30, 40],
+            stopLossAtrMultiplier: [1.5, 1.9, 2.2, 2.5],
+            takeProfitR_R: [2.0, 2.4, 2.8, 3.2]
+        };
+        const combinations: StrategySettings[] = [];
         for (const sma of paramRanges.smaPeriod) {
             for (const sl of paramRanges.stopLossAtrMultiplier) {
                 for (const tp of paramRanges.takeProfitR_R) {
-                    combinations.push({
-                        ...this.baselineSettings,
-                        smaPeriod: sma,
-                        stopLossAtrMultiplier: sl,
-                        takeProfitR_R: tp,
-                    });
+                    combinations.push({ ...this.baselineSettings, smaPeriod: sma, stopLossAtrMultiplier: sl, takeProfitR_R: tp });
                 }
             }
         }
-        
-        let bestSettings: StrategySettings | null = this.baselineSettings;
-        let bestScore = -Infinity;
-        let progress = 0;
-        const total = combinations.length;
-        
-        console.log(`[Optimizer] Starting iteration ${this.iteration} with ${total} combinations...`);
 
-        for (const settings of combinations) {
-            try {
-                const { metrics } = runBacktestFromData(this.data, settings);
+        let bestResult = { score: -Infinity, settings: this.baselineSettings };
+        const results = await Promise.all(combinations.map(c => this.evaluateSettings(c)));
 
-                if (metrics.total_trades < 10) continue; // Skip statistically insignificant results
-
-                // New scoring function with exponential-like weights on key metrics.
-                // It heavily rewards high P&L, a strong profit factor, and a high win rate,
-                // while still penalizing for high drawdown.
-                const pnl = metrics.total_pnl > 0 ? metrics.total_pnl : 0;
-                const score = (
-                    Math.pow(pnl, 1.2) * 
-                    Math.pow(metrics.profit_factor, 2.5) * 
-                    Math.pow(metrics.win_rate / 100, 1.5)
-                ) / (1 + (metrics.max_drawdown / 100));
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestSettings = settings;
-                }
-
-            } catch (error) {
-                // Ignore runs that fail (e.g., insufficient data for a parameter set)
-            }
-            progress++;
-            if (this.onProgressCallback) {
-                this.onProgressCallback(progress, total);
+        for (const result of results) {
+            if (result.score > bestResult.score) {
+                bestResult = result;
             }
         }
-        
-        console.log(`[Optimizer] Finished iteration ${this.iteration}. Best score: ${bestScore}`, bestSettings);
+        return bestResult.score > -Infinity ? bestResult.settings : null;
+    }
+    
+    private getNeighbors(settings: StrategySettings): StrategySettings[] {
+        const neighbors: StrategySettings[] = [];
+        const paramSteps: Record<OptimizableParams, number> = {
+            smaPeriod: this.iteration === 1 ? 2 : 1,
+            stopLossAtrMultiplier: 0.1,
+            takeProfitR_R: 0.1,
+        };
 
-        return bestSettings;
+        (Object.keys(paramSteps) as OptimizableParams[]).forEach(param => {
+            const originalValue = settings[param];
+            const step = paramSteps[param];
+            
+            // Neighbor above
+            const neighborUp = { ...settings, [param]: originalValue + step };
+            if(param === 'smaPeriod') neighborUp[param] = Math.round(neighborUp[param]);
+            else neighborUp[param] = parseFloat(neighborUp[param].toFixed(2));
+            neighbors.push(neighborUp);
+
+            // Neighbor below
+            const neighborDown = { ...settings, [param]: originalValue - step };
+             if(param === 'smaPeriod') neighborDown[param] = Math.round(neighborDown[param]);
+            else neighborDown[param] = parseFloat(neighborDown[param].toFixed(2));
+            if (neighborDown[param] > 0) { // All params must be positive
+                neighbors.push(neighborDown);
+            }
+        });
+        return neighbors;
+    }
+
+    private async runHillClimbingRefinement(): Promise<StrategySettings | null> {
+        let currentBest = await this.evaluateSettings(this.baselineSettings);
+        if (currentBest.score === -Infinity) {
+            console.warn("[Optimizer] Baseline settings for refinement are not profitable. Cannot refine.");
+            return null; // Cannot refine if baseline is not profitable
+        }
+
+        let climbed = true;
+        while(climbed) {
+            climbed = false;
+            const neighbors = this.getNeighbors(currentBest.settings);
+            const neighborEvals = await Promise.all(neighbors.map(n => this.evaluateSettings(n)));
+
+            for (const evalResult of neighborEvals) {
+                if (evalResult.score > currentBest.score) {
+                    currentBest = evalResult;
+                    climbed = true; // We found a better spot, so we'll check its neighbors in the next loop
+                }
+            }
+            // After checking all neighbors, if we climbed, the loop continues from the new best spot
+        }
+        return currentBest.settings;
+    }
+
+    public async run(): Promise<StrategySettings | null> {
+        if (this.iteration === 0) {
+            console.log(`[Optimizer] Starting wide search with ${this.datasets.length} file(s)...`);
+            return this.runGridSearch();
+        } else {
+            console.log(`[Optimizer] Starting refinement (Lvl ${this.iteration}) for ${this.datasets.length} file(s)...`);
+            return this.runHillClimbingRefinement();
+        }
     }
 }
 // Placeholder for paramConfig keys type generation
