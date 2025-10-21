@@ -3,6 +3,7 @@ import type { PerformanceMetrics, PnlDataPoint, BacktestRun } from '../types';
 import { AnalyticsChart } from './AnalyticsChart';
 import { ChartIcon, DollarIcon, PercentIcon, LatencyIcon, UserIcon, BacktestIcon, SignalIcon, XCircleIcon } from './icons';
 import { Tooltip } from './Tooltip';
+import { AnimatedNumber } from './AnimatedNumber';
 
 interface SessionPerformanceMetrics {
   total_pnl: number;
@@ -21,7 +22,7 @@ interface PerformanceDashboardProps {
   onClearActiveBacktest: () => void;
 }
 
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; tooltip: string; }> = ({ title, value, icon, tooltip }) => (
+const StatCard: React.FC<{ title: string; value: number; icon: React.ReactNode; tooltip: string; formatter: (value: number) => string; }> = ({ title, value, icon, tooltip, formatter }) => (
   <div className="bg-container-bg p-4 rounded-lg border border-border-color">
     <div className="flex items-center">
       <div className="text-slate-500 mr-3">{icon}</div>
@@ -29,7 +30,9 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; 
         <p className="text-sm text-slate-400 font-medium cursor-help">{title}</p>
       </Tooltip>
     </div>
-    <p className="text-2xl font-semibold text-slate-100 mt-2 font-mono">{value}</p>
+    <p className="text-2xl font-semibold text-slate-100 mt-2 font-mono">
+        <AnimatedNumber value={value} formatter={formatter} />
+    </p>
   </div>
 );
 
@@ -105,10 +108,10 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ live
                      </button>
                  </div>
                 <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
-                    <StatCard title="Total P&L" value={`$${metrics?.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) ?? '0.00'}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The net profit or loss from this specific backtest run." />
-                    <StatCard title="Win Rate" value={`${metrics?.win_rate.toFixed(1) ?? '0.0'}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The percentage of trades in this run that were closed with a profit." />
-                    <StatCard title="Total Trades" value={metrics?.total_trades.toLocaleString() ?? '0'} icon={<ChartIcon className="w-5 h-5"/>} tooltip="The total number of simulated trades executed in this run." />
-                    <StatCard title="Profit Factor" value={metrics?.profit_factor.toFixed(2) ?? '0.00'} icon={<BacktestIcon className="w-5 h-5"/>} tooltip="Gross profit divided by gross loss for this run. A value above 1 indicates profitability." />
+                    <StatCard title="Total P&L" value={metrics?.total_pnl ?? 0} formatter={v => `$${v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The net profit or loss from this specific backtest run." />
+                    <StatCard title="Win Rate" value={metrics?.win_rate ?? 0} formatter={v => `${v.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The percentage of trades in this run that were closed with a profit." />
+                    <StatCard title="Total Trades" value={metrics?.total_trades ?? 0} formatter={v => v.toLocaleString()} icon={<ChartIcon className="w-5 h-5"/>} tooltip="The total number of simulated trades executed in this run." />
+                    <StatCard title="Profit Factor" value={metrics?.profit_factor ?? 0} formatter={v => v.toFixed(2)} icon={<BacktestIcon className="w-5 h-5"/>} tooltip="Gross profit divided by gross loss for this run. A value above 1 indicates profitability." />
                 </div>
                 <div className="h-80">
                     <AnalyticsChart data={metrics?.pnl_history || []} />
@@ -128,10 +131,10 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ live
             ) : (
                 <>
                 <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
-                    <StatCard title="Session P&L" value={`$${sessionMetrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The sum of the profit or loss from all runs in this session."/>
-                    <StatCard title="Avg. Win Rate" value={`${sessionMetrics.avg_win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The average win rate across all completed runs in this session."/>
-                    <StatCard title="Total Trades" value={sessionMetrics.total_trades.toLocaleString()} icon={<ChartIcon className="w-5 h-5"/>} tooltip="The total number of simulated trades across all runs in this session."/>
-                    <StatCard title="Completed Runs" value={sessionMetrics.run_count.toLocaleString()} icon={<BacktestIcon className="w-5 h-5"/>} tooltip="The total number of backtest files successfully processed in this session."/>
+                    <StatCard title="Session P&L" value={sessionMetrics.total_pnl} formatter={v => `$${v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The sum of the profit or loss from all runs in this session."/>
+                    <StatCard title="Avg. Win Rate" value={sessionMetrics.avg_win_rate} formatter={v => `${v.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The average win rate across all completed runs in this session."/>
+                    <StatCard title="Total Trades" value={sessionMetrics.total_trades} formatter={v => v.toLocaleString()} icon={<ChartIcon className="w-5 h-5"/>} tooltip="The total number of simulated trades across all runs in this session."/>
+                    <StatCard title="Completed Runs" value={sessionMetrics.run_count} formatter={v => v.toLocaleString()} icon={<BacktestIcon className="w-5 h-5"/>} tooltip="The total number of backtest files successfully processed in this session."/>
                 </div>
                  <div className="h-80">
                     <AnalyticsChart data={sessionPnlHistory} />
@@ -164,13 +167,13 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ live
                 </div>
             ) : (
                 <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${liveStatCardCount} gap-4 mb-6`}>
-                <StatCard title="Global P&L" value={`$${liveMetrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The net profit or loss from all closed trades copied by all users."/>
+                <StatCard title="Global P&L" value={liveMetrics.total_pnl} formatter={(v) => `$${v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The net profit or loss from all closed trades copied by all users."/>
                 {userPnl !== null && (
-                    <StatCard title="My P&L" value={`$${userPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-5 h-5"/>} tooltip="Your personal profit or loss from the trades you have copied."/>
+                    <StatCard title="My P&L" value={userPnl} formatter={(v) => `$${v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-5 h-5"/>} tooltip="Your personal profit or loss from the trades you have copied."/>
                 )}
-                <StatCard title="Win Rate" value={`${liveMetrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The percentage of all copied trades that were closed with a profit."/>
-                <StatCard title="Max Drawdown" value={`${liveMetrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The largest peak-to-trough decline in account equity, based on a sample account."/>
-                <StatCard title="Avg. Latency" value={`${liveMetrics.latency_ms}ms`} icon={<LatencyIcon className="w-5 h-5"/>} tooltip="The average time between signal generation and when it appears in the feed."/>
+                <StatCard title="Win Rate" value={liveMetrics.win_rate} formatter={v => `${v.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The percentage of all copied trades that were closed with a profit."/>
+                <StatCard title="Max Drawdown" value={liveMetrics.max_drawdown} formatter={v => `${v.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The largest peak-to-trough decline in account equity, based on a sample account."/>
+                <StatCard title="Avg. Latency" value={liveMetrics.latency_ms} formatter={v => `${v.toFixed(0)}ms`} icon={<LatencyIcon className="w-5 h-5"/>} tooltip="The average time between signal generation and when it appears in the feed."/>
                 </div>
             )}
             <div className="h-80">

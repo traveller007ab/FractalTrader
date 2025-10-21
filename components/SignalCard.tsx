@@ -8,6 +8,7 @@ interface SignalCardProps {
   onCopyTrade: (signal: Signal) => void;
   copiedTrades: CopiedTrade[];
   user: User;
+  isNew: boolean;
 }
 
 const formatPrice = (price: number): string => {
@@ -24,7 +25,7 @@ const StatusBadge: React.FC<{ status: 'Win' | 'Loss' | 'Active' | 'Expired' }> =
     return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status]}`}>{status}</span>;
 }
 
-export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user }) => {
+export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
   const sideColor = signal.side === 'buy' ? 'text-emerald-500' : 'text-red-500';
   const confidenceColor = signal.confidence > 0.75 ? 'text-sky-400' : signal.confidence > 0.5 ? 'text-yellow-400' : 'text-orange-400';
   
@@ -42,7 +43,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
   }
 
   return (
-    <tr className="hover:bg-slate-800/60 transition-colors duration-150">
+    <tr className={`hover:bg-slate-800/60 transition-colors duration-150 ${isNew ? 'animate-highlight-fade' : ''}`}>
       <td className="px-4 py-4 whitespace-nowrap">
         <div className="text-sm font-medium text-slate-100">{signal.symbol}</div>
         <div className="text-xs text-slate-400">{signal.exchange}</div>
@@ -57,7 +58,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
       <td className="px-4 py-4 whitespace-nowrap">
         <div className="flex items-center">
             <div className="w-20 bg-slate-700 rounded-full h-1.5">
-              <div className="bg-brand-accent h-1.5 rounded-full" style={{ width: `${signal.confidence * 100}%` }}></div>
+              <div className="bg-brand-accent h-1.5 rounded-full transition-all duration-500" style={{ width: `${signal.confidence * 100}%` }}></div>
             </div>
             <span className={`ml-3 text-sm font-medium font-mono ${confidenceColor}`}>{ (signal.confidence * 100).toFixed(0) }%</span>
         </div>

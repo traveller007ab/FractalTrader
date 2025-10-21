@@ -108,29 +108,31 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
 
     const handleFilesSelected = async (selectedFiles: FileList | null) => {
         if (!selectedFiles) return;
-        const newFiles: FileStatus[] = [];
-        const existingFileIds = new Set(files.map(f => `${f.file.name}-${f.file.lastModified}`));
-
-        for (const file of Array.from(selectedFiles)) {
-             if (file.name.toLowerCase().endsWith('.csv')) {
-                 const fileId = `${file.name}-${file.lastModified}`;
-                 if (!existingFileIds.has(fileId)) {
-                     newFiles.push({ id: fileId, file, status: 'Queued' });
-                 }
-             }
-        }
         
-        setFiles(prev => [...prev, ...newFiles]);
+        const newFileArray = Array.from(selectedFiles).filter(file => {
+          const fileId = `${file.name}-${file.lastModified}`;
+          return !files.some(f => f.id === fileId) && file.name.toLowerCase().endsWith('.csv');
+        });
+        
+        const newFileStatuses: FileStatus[] = newFileArray.map(file => ({
+            id: `${file.name}-${file.lastModified}`,
+            file,
+            status: 'Queued',
+        }));
 
-        for (const newFile of newFiles) {
-             try {
-                const data = await parseCSV(newFile.file);
-                setFiles(prev => prev.map(f => f.id === newFile.id ? { ...f, data } : f));
-            } catch (error: unknown) {
-                 const errorMessage = error instanceof Error ? error.message : "An unknown parsing error occurred.";
-                setFiles(prev => prev.map(f => f.id === newFile.id ? { ...f, status: 'Failed', error: errorMessage } : f));
-            }
-        }
+        setFiles(prev => [...prev, ...newFileStatuses]);
+        
+        newFileStatuses.forEach(newFile => {
+            (async () => {
+                try {
+                    const data = await parseCSV(newFile.file);
+                    setFiles(prev => prev.map(f => f.id === newFile.id ? { ...f, data } : f));
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : "An unknown parsing error occurred.";
+                    setFiles(prev => prev.map(f => f.id === newFile.id ? { ...f, status: 'Failed', error: errorMessage } : f));
+                }
+            })();
+        });
     };
     
     const handleRunClick = async () => {
@@ -199,10 +201,11 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
             </div>
             
             <div className="p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                     <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => handleFilesSelected(e.target.files)} />
-                     <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" onChange={(e) => handleFilesSelected(e.target.files)} />
-                     <button onClick={() => fileInputRef.current?.click()} className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-md shadow-sm text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors">
+                 <div className="grid grid-cols-2 gap-4">
+                    <input type="file" ref={fileInputRef} className="hidden" multiple onChange={(e) => handleFilesSelected(e.target.files)} />
+                    <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" onChange={(e) => handleFilesSelected(e.target.files)} />
+
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-md shadow-sm text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors">
                         <DocumentPlusIcon className="w-5 h-5 mr-2"/>
                         Upload Files
                     </button>
@@ -220,8 +223,8 @@ export const BacktestResults: React.FC<BacktestResultsProps> = ({ backtests, loa
                                 {f.status === 'Queued' && !f.data && !f.error && <SpinnerIcon className="animate-spin h-4 w-4 text-slate-400" />}
                                 {f.status === 'Queued' && f.data && <span className="text-xs text-slate-400">Ready</span>}
                                 {f.status === 'Running' && <SpinnerIcon className="animate-spin h-4 w-4 text-sky-400" />}
-                                {f.status === 'Succeeded' && <CheckCircleIcon className="h-5 w-5 text-emerald-400" />}
-                                {f.status === 'Failed' && <Tooltip content={f.error || ''}><XCircleIcon className="h-5 w-5 text-red-400 cursor-help" /></Tooltip>}
+                                {f.status === 'Succeeded' && <CheckCircleIcon className="h-5 w-5 text-emerald-400 animate-pop-in" />}
+                                {f.status === 'Failed' && <Tooltip content={f.error || ''}><XCircleIcon className="h-5 w-5 text-red-400 cursor-help animate-pop-in" /></Tooltip>}
                             </div>
                         ))}
                     </div>

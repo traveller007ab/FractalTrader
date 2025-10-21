@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
 import { SignalCard } from './SignalCard';
@@ -15,6 +15,18 @@ interface SignalFeedProps {
 }
 
 export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, onRefresh, loading, copiedTrades, user }) => {
+  const [newSignalId, setNewSignalId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (signals.length > 0) {
+        // Simple way to detect a new signal is just checking the first one
+        const latestSignal = signals[0];
+        if (latestSignal.id !== newSignalId) {
+            setNewSignalId(latestSignal.id);
+        }
+    }
+  }, [signals]);
+
   return (
     <div className="bg-container-bg rounded-lg shadow-lg overflow-hidden border border-border-color">
       <div className="p-4 border-b border-border-color flex items-center justify-between">
@@ -56,7 +68,7 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
           </thead>
           <tbody className="bg-container-bg divide-y divide-border-color">
             {signals.map(signal => (
-              <SignalCard key={signal.id} signal={signal} onCopyTrade={onCopyTrade} copiedTrades={copiedTrades} user={user} />
+              <SignalCard key={signal.id} signal={signal} onCopyTrade={onCopyTrade} copiedTrades={copiedTrades} user={user} isNew={signal.id === newSignalId} />
             ))}
           </tbody>
         </table>
