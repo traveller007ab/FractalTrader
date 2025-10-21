@@ -1,7 +1,8 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+// Fix: Add .tsx extension to import path
+// Fix: Add .tsx extension to App import
+import App from './App.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,3 +15,15 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Hide splash screen after app mounts
+const splashScreen = document.getElementById('splash-screen');
+if (splashScreen) {
+    // Wait for a moment to ensure content is ready to be displayed and animation is smooth
+    setTimeout(() => {
+        splashScreen.classList.add('fade-out');
+        splashScreen.addEventListener('transitionend', () => {
+            splashScreen.remove();
+        });
+    }, 500); // Delay for a better perceived performance
+}

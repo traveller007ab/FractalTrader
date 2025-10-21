@@ -1,5 +1,6 @@
-import { runBacktestFromData } from './backtester';
-import type { StrategySettings, TimeSeriesData, BacktestMetrics } from '../types';
+// Fix: Add .ts extension to backtester import
+import { runBacktestFromData } from './backtester.ts';
+import type { StrategySettings, TimeSeriesData } from '../types';
 
 // Define the parameter space for optimization
 const paramRanges = {
@@ -48,7 +49,7 @@ export class Optimizer {
 
         for (const settings of combinations) {
             try {
-                const { metrics } = await runBacktestFromData(this.data, settings);
+                const { metrics } = runBacktestFromData(this.data, settings);
                 // Score based on profit factor, but penalize for low trade count and high drawdown
                 const score = (metrics.profit_factor || 0) * Math.sqrt(metrics.total_trades) / (1 + (metrics.max_drawdown / 100));
 

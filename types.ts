@@ -93,6 +93,12 @@ export interface StrategySettings {
   duplicateThresholdPct: number;
 }
 
+export interface ToastMessage {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 
 // Supabase type structure for type safety
 export interface Database {

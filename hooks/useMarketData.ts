@@ -1,102 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import type { Signal, CopiedTrade, BacktestRun, PerformanceMetrics, PnlDataPoint } from '../types';
-import type { User } from '@supabase/supabase-js';
+// Fix: Add file extensions to imports
+import { getTimeSeries } from '../lib/twelveDataClient.ts';
+import type { TimeSeriesData } from '../types.ts';
 
-export function useMarketData(user: User | null) {
-  const [loading, setLoading] = useState(true);
-  const [signals, setSignals] = useState<Signal[]>([]);
-  const [copiedTrades, setCopiedTrades] = useState<CopiedTrade[]>([]);
-  const [backtests, setBacktests] = useState<BacktestRun[]>([]);
-  const [pnlHistory, setPnlHistory] = useState<PnlDataPoint[]>([]);
-  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>({
-    total_pnl: 0,
-    win_rate: 0,
-    max_drawdown: 0,
-    avg_return: 0,
-    latency_ms: 0,
-  });
-  const [userPnl, setUserPnl] = useState<number | null>(null);
+interface MarketDataState {
+    data: TimeSeriesData[];
+    loading: boolean;
+    error: string | null;
+}
 
-  const fetchData = useCallback(async () => {
-    if (!user) {
-        setLoading(false);
-        return;
-    };
-    
-    setLoading(true);
-    
-    try {
-      const [signalsRes, tradesRes, backtestsRes] = await Promise.all([
-        supabase.from('signals').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('copied_trades').select('*'),
-        supabase.from('backtest_runs').select('*').order('created_at', { ascending: false }).limit(50)
-      ]);
+export function useMarketData(symbol: string, interval: '1min' | '5min' | '15min' | '30min' | '45min' | '1h' | '2h' | '4h' | '1day' | '1week' | '1month', outputsize: number) {
+    const [state, setState] = useState<MarketDataState>({
+        data: [],
+        loading: true,
+        error: null,
+    });
 
-      if (signalsRes.error) throw signalsRes.error;
-      if (tradesRes.error) throw tradesRes.error;
-      if (backtestsRes.error) throw backtestsRes.error;
-      
-      const allTrades = tradesRes.data || [];
-      const userTrades = allTrades.filter(t => t.user_id === user.id);
+    const fetchData = useCallback(async () => {
+        setState(s => ({ ...s, loading: true, error: null }));
+        try {
+            const timeSeriesData = await getTimeSeries({ symbol, interval, outputsize });
+            // API returns newest first, so we reverse for charting
+            setState({ data: timeSeriesData.reverse(), loading: false, error: null });
+        } catch (err: any) {
+            let errorMessage = 'Failed to fetch market data.';
+            if (typeof err.message === 'string' && err.message.startsWith('RATE_LIMIT_EXCEEDED')) {
+                 errorMessage = "API rate limit reached. Please wait a minute and try again.";
+            }
+            setState({ data: [], loading: false, error: errorMessage });
+        }
+    }, [symbol, interval, outputsize]);
 
-      setSignals(signalsRes.data || []);
-      setCopiedTrades(allTrades);
-      setBacktests((backtestsRes.data || []).filter(b => b.metrics));
-      
-      const closedTrades = allTrades.filter(t => t.status === 'closed' && t.pnl != null);
-      const totalPnl = closedTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
-      const winningTrades = closedTrades.filter(t => (t.pnl || 0) > 0).length;
-      const winRate = closedTrades.length > 0 ? (winningTrades / closedTrades.length) * 100 : 0;
-      
-      const currentUserPnl = userTrades
-        .filter(t => t.status === 'closed' && t.pnl != null)
-        .reduce((acc, t) => acc + (t.pnl || 0), 0);
-      setUserPnl(currentUserPnl);
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
-      setPerformanceMetrics({
-        total_pnl: totalPnl,
-        win_rate: winRate,
-        max_drawdown: 15.2,
-        avg_return: 2.1,
-        latency_ms: Math.floor(Math.random() * 50) + 20,
-      });
-      
-      const livePnlHistory: PnlDataPoint[] = closedTrades
-        .sort((a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime())
-        .reduce((acc, trade) => {
-            const lastPnl = acc.length > 0 ? acc[acc.length - 1].pnl : 0;
-            acc.push({ date: new Date(trade.executed_at).toLocaleDateString(), pnl: lastPnl + (trade.pnl || 0) });
-            return acc;
-        }, [] as PnlDataPoint[]);
-      setPnlHistory(livePnlHistory);
-
-    } catch (error) {
-      console.error("Error fetching market data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase.channel('db-changes');
-    channel
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload) => {
-        setSignals(currentSignals => [payload.new as Signal, ...currentSignals]);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'copied_trades' }, fetchData)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'backtest_runs'}, fetchData)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, fetchData]);
-
-  return { 
-      loading, signals, backtests, pnlHistory, performanceMetrics, 
-      userPnl, copiedTrades, fetchData
-  };
+    return { ...state, refetch: fetchData };
 }

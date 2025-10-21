@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { LogoIcon } from './icons';
+// Fix: Add .tsx extension to icons import
+import { LogoIcon } from './icons.tsx';
 
 interface HeaderProps {
   session: Session | null;

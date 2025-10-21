@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CopyIcon, ChartIcon } from './icons';
+// Fix: Add .tsx extension to icons import
+import { CopyIcon, ChartIcon } from './icons.tsx';
 
 export const ToastContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="fixed bottom-5 right-5 z-50 space-y-3">
@@ -35,6 +36,12 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
       onClose();
     }, 300); // Duration of the fade-out animation
   };
+
+  useEffect(() => {
+    // Automatically close after some time
+    const timer = setTimeout(handleClose, 4700);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className={`flex items-center justify-between max-w-xs p-4 bg-slate-800 text-slate-200 rounded-lg shadow-lg border border-border-color ${isClosing ? 'animate-fade-out-down' : 'animate-fade-in-up'}`}>

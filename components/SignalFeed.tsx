@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
 import { SignalCard } from './SignalCard';
-import { RefreshIcon, SignalIcon } from './icons';
+// Fix: Add .tsx extension to icons import
+import { RefreshIcon, SignalIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip';
 
 interface SignalFeedProps {
@@ -25,7 +26,7 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
             setNewSignalId(latestSignal.id);
         }
     }
-  }, [signals]);
+  }, [signals, newSignalId]);
 
   return (
     <div className="bg-container-bg rounded-lg shadow-lg overflow-hidden border border-border-color">

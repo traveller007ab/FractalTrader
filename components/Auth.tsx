@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { LogoIcon } from './icons';
+// Fix: Add .tsx extension to icons import
+import { LogoIcon } from './icons.tsx';
 
 export const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
