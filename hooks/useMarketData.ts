@@ -3,13 +3,6 @@ import { supabase } from '../lib/supabaseClient';
 import type { Signal, CopiedTrade, BacktestRun, PerformanceMetrics, PnlDataPoint } from '../types';
 import type { User } from '@supabase/supabase-js';
 
-interface BacktestPerformanceMetrics {
-  total_pnl: number;
-  avg_win_rate: number;
-  total_trades: number;
-  run_count: number;
-}
-
 export function useMarketData(user: User | null) {
   const [loading, setLoading] = useState(true);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -24,13 +17,6 @@ export function useMarketData(user: User | null) {
     latency_ms: 0,
   });
   const [userPnl, setUserPnl] = useState<number | null>(null);
-  const [backtestPnlHistory, setBacktestPnlHistory] = useState<PnlDataPoint[]>([]);
-  const [backtestPerformanceMetrics, setBacktestPerformanceMetrics] = useState<BacktestPerformanceMetrics>({
-    total_pnl: 0,
-    avg_win_rate: 0,
-    total_trades: 0,
-    run_count: 0,
-  });
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -56,6 +42,7 @@ export function useMarketData(user: User | null) {
 
       setSignals(signalsRes.data || []);
       setCopiedTrades(allTrades);
+      setBacktests((backtestsRes.data || []).filter(b => b.metrics));
       
       const closedTrades = allTrades.filter(t => t.status === 'closed' && t.pnl != null);
       const totalPnl = closedTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
@@ -84,31 +71,6 @@ export function useMarketData(user: User | null) {
         }, [] as PnlDataPoint[]);
       setPnlHistory(livePnlHistory);
 
-      const allBacktests = (backtestsRes.data || []).filter(b => b.metrics);
-      setBacktests(allBacktests);
-      
-      if (allBacktests.length > 0) {
-          const totalBacktestPnl = allBacktests.reduce((acc, b) => acc + (b.metrics?.total_pnl || 0), 0);
-          const totalWinRate = allBacktests.reduce((acc, b) => acc + (b.metrics?.win_rate || 0), 0);
-          const totalBacktestTrades = allBacktests.reduce((acc, b) => acc + (b.metrics?.total_trades || 0), 0);
-
-          setBacktestPerformanceMetrics({
-              total_pnl: totalBacktestPnl,
-              avg_win_rate: totalWinRate / allBacktests.length,
-              total_trades: totalBacktestTrades,
-              run_count: allBacktests.length,
-          });
-
-          const historicalPnl: PnlDataPoint[] = allBacktests
-            .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime())
-            .reduce((acc, run) => {
-                const lastPnl = acc.length > 0 ? acc[acc.length - 1].pnl : 0;
-                acc.push({ date: new Date(run.started_at).toLocaleDateString(), pnl: lastPnl + (run.metrics?.total_pnl || 0) });
-                return acc;
-            }, [] as PnlDataPoint[]);
-          setBacktestPnlHistory(historicalPnl);
-      }
-
     } catch (error) {
       console.error("Error fetching market data:", error);
     } finally {
@@ -135,6 +97,6 @@ export function useMarketData(user: User | null) {
 
   return { 
       loading, signals, backtests, pnlHistory, performanceMetrics, 
-      userPnl, copiedTrades, fetchData, backtestPnlHistory, backtestPerformanceMetrics 
+      userPnl, copiedTrades, fetchData
   };
 }

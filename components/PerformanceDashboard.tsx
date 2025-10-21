@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { PerformanceMetrics, PnlDataPoint, BacktestRun } from '../types';
 import { AnalyticsChart } from './AnalyticsChart';
 import { ChartIcon, DollarIcon, PercentIcon, LatencyIcon, UserIcon, BacktestIcon, SignalIcon, XCircleIcon } from './icons';
 import { Tooltip } from './Tooltip';
 
-interface BacktestPerformanceMetrics {
+interface SessionPerformanceMetrics {
   total_pnl: number;
   avg_win_rate: number;
   total_trades: number;
@@ -12,11 +12,10 @@ interface BacktestPerformanceMetrics {
 }
 
 interface PerformanceDashboardProps {
-  metrics: PerformanceMetrics;
-  pnlHistory: PnlDataPoint[];
+  liveMetrics: PerformanceMetrics;
+  livePnlHistory: PnlDataPoint[];
   userPnl: number | null;
-  backtestMetrics: BacktestPerformanceMetrics;
-  backtestPnlHistory: PnlDataPoint[];
+  sessionRuns: BacktestRun[];
   loading: boolean;
   activeBacktest: BacktestRun | null;
   onClearActiveBacktest: () => void;
@@ -44,7 +43,7 @@ const StatCardSkeleton: React.FC = () => (
     </div>
 );
 
-export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metrics, pnlHistory, userPnl, backtestMetrics, backtestPnlHistory, loading, activeBacktest, onClearActiveBacktest }) => {
+export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ liveMetrics, livePnlHistory, userPnl, sessionRuns, loading, activeBacktest, onClearActiveBacktest }) => {
   const [activeTab, setActiveTab] = useState<'live' | 'backtest'>('live');
 
   const liveStatCardCount = userPnl !== null ? 5 : 4;
@@ -62,6 +61,36 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metr
       {children}
     </button>
   );
+  
+  const sessionMetrics = useMemo((): SessionPerformanceMetrics => {
+    if (!sessionRuns || sessionRuns.length === 0) {
+        return { total_pnl: 0, avg_win_rate: 0, total_trades: 0, run_count: 0 };
+    }
+    const totalPnl = sessionRuns.reduce((acc, b) => acc + (b.metrics?.total_pnl || 0), 0);
+    const totalWinRate = sessionRuns.reduce((acc, b) => acc + (b.metrics?.win_rate || 0), 0);
+    const totalTrades = sessionRuns.reduce((acc, b) => acc + (b.metrics?.total_trades || 0), 0);
+
+    return {
+        total_pnl: totalPnl,
+        avg_win_rate: totalWinRate / sessionRuns.length,
+        total_trades: totalTrades,
+        run_count: sessionRuns.length,
+    };
+  }, [sessionRuns]);
+
+  const sessionPnlHistory = useMemo((): PnlDataPoint[] => {
+      if (!sessionRuns || sessionRuns.length === 0) return [];
+
+      const sortedRuns = [...sessionRuns].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+      
+      return sortedRuns.reduce((acc, run, index) => {
+          const lastPnl = acc.length > 0 ? acc[acc.length - 1].pnl : 0;
+          const runPnl = run.metrics?.total_pnl || 0;
+          acc.push({ date: `Run ${index + 1}`, pnl: lastPnl + runPnl });
+          return acc;
+      }, [] as PnlDataPoint[]);
+  }, [sessionRuns]);
+
 
   const renderBacktestView = () => {
     if (activeBacktest) {
@@ -72,7 +101,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metr
                      <h3 className="text-md font-semibold text-slate-200 truncate" title={activeBacktest.strategy}>Focused Run: <span className="text-brand-accent">{activeBacktest.strategy}</span></h3>
                      <button onClick={onClearActiveBacktest} className="flex items-center text-xs text-slate-400 hover:text-white transition-colors">
                          <XCircleIcon className="w-4 h-4 mr-1"/>
-                         Show Aggregate
+                         Return to Aggregate
                      </button>
                  </div>
                 <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
@@ -88,29 +117,27 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metr
         )
     }
     
-    // Default aggregated view
+    // Default aggregated session view
     return (
         <div className="p-4 animate-fade-in-up">
-            <h3 className="text-md font-semibold text-slate-200 mb-4">Aggregate of All Backtest Runs</h3>
-            {loading ? (
-                 <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
-                    {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+            <h3 className="text-md font-semibold text-slate-200 mb-4">Current Backtest Session Aggregate</h3>
+            {sessionRuns.length === 0 ? (
+                 <div className="h-96 flex items-center justify-center text-slate-400">
+                    <p>Run a new backtest session to see aggregate results here.</p>
                 </div>
             ) : (
+                <>
                 <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6`}>
-                    <StatCard title="Total Backtest P&L" value={`$${backtestMetrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The sum of the profit or loss from all your backtest runs."/>
-                    <StatCard title="Avg. Win Rate" value={`${backtestMetrics.avg_win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The average win rate across all your completed backtest runs."/>
-                    <StatCard title="Total Trades" value={backtestMetrics.total_trades.toLocaleString()} icon={<ChartIcon className="w-5 h-5"/>} tooltip="The total number of simulated trades across all backtest runs."/>
-                    <StatCard title="Total Runs" value={backtestMetrics.run_count.toLocaleString()} icon={<BacktestIcon className="w-5 h-5"/>} tooltip="The total number of backtest files you have successfully processed."/>
+                    <StatCard title="Session P&L" value={`$${sessionMetrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The sum of the profit or loss from all runs in this session."/>
+                    <StatCard title="Avg. Win Rate" value={`${sessionMetrics.avg_win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The average win rate across all completed runs in this session."/>
+                    <StatCard title="Total Trades" value={sessionMetrics.total_trades.toLocaleString()} icon={<ChartIcon className="w-5 h-5"/>} tooltip="The total number of simulated trades across all runs in this session."/>
+                    <StatCard title="Completed Runs" value={sessionMetrics.run_count.toLocaleString()} icon={<BacktestIcon className="w-5 h-5"/>} tooltip="The total number of backtest files successfully processed in this session."/>
                 </div>
+                 <div className="h-80">
+                    <AnalyticsChart data={sessionPnlHistory} />
+                </div>
+                </>
             )}
-             <div className="h-80">
-            {loading ? (
-                <div className="w-full h-full bg-slate-800 rounded-lg animate-pulse"></div>
-            ) : (
-                <AnalyticsChart data={backtestPnlHistory} />
-            )}
-            </div>
          </div>
     );
   }
@@ -137,20 +164,20 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ metr
                 </div>
             ) : (
                 <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${liveStatCardCount} gap-4 mb-6`}>
-                <StatCard title="Global P&L" value={`$${metrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The net profit or loss from all closed trades copied by all users."/>
+                <StatCard title="Global P&L" value={`$${liveMetrics.total_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<DollarIcon className="w-5 h-5"/>} tooltip="The net profit or loss from all closed trades copied by all users."/>
                 {userPnl !== null && (
                     <StatCard title="My P&L" value={`$${userPnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} icon={<UserIcon className="w-5 h-5"/>} tooltip="Your personal profit or loss from the trades you have copied."/>
                 )}
-                <StatCard title="Win Rate" value={`${metrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The percentage of all copied trades that were closed with a profit."/>
-                <StatCard title="Max Drawdown" value={`${metrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The largest peak-to-trough decline in account equity, based on a sample account."/>
-                <StatCard title="Avg. Latency" value={`${metrics.latency_ms}ms`} icon={<LatencyIcon className="w-5 h-5"/>} tooltip="The average time between signal generation and when it appears in the feed."/>
+                <StatCard title="Win Rate" value={`${liveMetrics.win_rate.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The percentage of all copied trades that were closed with a profit."/>
+                <StatCard title="Max Drawdown" value={`${liveMetrics.max_drawdown.toFixed(1)}%`} icon={<PercentIcon className="w-5 h-5"/>} tooltip="The largest peak-to-trough decline in account equity, based on a sample account."/>
+                <StatCard title="Avg. Latency" value={`${liveMetrics.latency_ms}ms`} icon={<LatencyIcon className="w-5 h-5"/>} tooltip="The average time between signal generation and when it appears in the feed."/>
                 </div>
             )}
             <div className="h-80">
             {loading ? (
                 <div className="w-full h-full bg-slate-800 rounded-lg animate-pulse"></div>
             ) : (
-                <AnalyticsChart data={pnlHistory} />
+                <AnalyticsChart data={livePnlHistory} />
             )}
             </div>
         </div>

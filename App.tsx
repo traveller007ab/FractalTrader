@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { Session } from '@supabase/supabase-js';
@@ -26,7 +27,11 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [strategySettings, setStrategySettings] = useState<StrategySettings>(defaultStrategySettings);
+  
+  // State for focused and session-based backtest analysis
   const [activeBacktest, setActiveBacktest] = useState<BacktestRun | null>(null);
+  const [sessionBacktestRuns, setSessionBacktestRuns] = useState<BacktestRun[]>([]);
+  
   const [isOptimizing, setIsOptimizing] = useState(false);
 
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -36,6 +41,11 @@ function App() {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 5000);
   };
+  
+  const handleSessionStart = () => {
+    setSessionBacktestRuns([]);
+    setActiveBacktest(null);
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -94,7 +104,7 @@ function App() {
 
   const { 
       loading, signals, backtests, pnlHistory, performanceMetrics, 
-      userPnl, copiedTrades, fetchData, backtestPnlHistory, backtestPerformanceMetrics 
+      userPnl, copiedTrades, fetchData
   } = useMarketData(session?.user ?? null);
   
   useEffect(() => {
@@ -146,7 +156,7 @@ function App() {
             user_id: session.user.id,
             strategy: `Fractal Shift (${fileName})`,
             params: strategySettings,
-            metrics: { ...metrics, pnl_history: pnlHistory }, // Embed pnl history in metrics
+            metrics: { ...metrics, pnl_history: pnlHistory },
             started_at: new Date().toISOString(),
             ended_at: new Date().toISOString(),
         };
@@ -154,14 +164,20 @@ function App() {
         const { data, error } = await supabase.from('backtest_runs').insert(backtestRun).select().single();
         if (error) throw error;
         
-        setActiveBacktest(data as BacktestRun); // Set the active backtest for focused view
+        const newRun = data as BacktestRun;
+        setActiveBacktest(newRun);
+        setSessionBacktestRuns(prev => [...prev, newRun]);
         addToast('Backtest complete. Viewing focused results.', 'info');
 
     } catch (error: unknown) {
         let errorMessage = 'An unknown error occurred during backtest.';
         if (error instanceof Error) {
             errorMessage = error.message;
+        // FIX: Replaced `e` with `error` to correctly reference the caught exception.
+        } else if (typeof error === 'object' && error !== null && 'message' in error) {
+             errorMessage = String((error as { message: string }).message);
         }
+
         if (errorMessage.includes('Failed to fetch')) {
              addToast(`Backtest ran, but failed to save results. Check network.`, 'error');
         } else {
@@ -176,11 +192,17 @@ function App() {
   const handleOptimize = async (csvData: TimeSeriesData[]) => {
     setIsOptimizing(true);
     addToast('Starting strategy optimization...', 'info');
+    let progressToastId: number | null = null;
 
     try {
         const optimizer = new Optimizer(csvData, strategySettings);
         optimizer.onProgress((progress, total) => {
-             addToast(`Optimizing... (${progress}/${total})`, 'info');
+            if (progressToastId) {
+                setToasts(prev => prev.filter(t => t.id !== progressToastId));
+            }
+            const id = Date.now();
+            progressToastId = id;
+            setToasts(prev => [...prev, { id, message: `Optimizing... (${progress}/${total})`, type: 'info' }]);
         });
 
         const bestSettings = await optimizer.run();
@@ -195,6 +217,9 @@ function App() {
         console.error("Optimization failed:", error);
         addToast('Optimization failed.', 'error');
     } finally {
+        if (progressToastId) {
+            setToasts(prev => prev.filter(t => t.id !== progressToastId));
+        }
         setIsOptimizing(false);
     }
   };
@@ -231,11 +256,10 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <PerformanceDashboard 
-                    metrics={performanceMetrics} 
-                    pnlHistory={pnlHistory} 
+                    liveMetrics={performanceMetrics} 
+                    livePnlHistory={pnlHistory} 
                     userPnl={userPnl}
-                    backtestMetrics={backtestPerformanceMetrics}
-                    backtestPnlHistory={backtestPnlHistory}
+                    sessionRuns={sessionBacktestRuns}
                     activeBacktest={activeBacktest}
                     onClearActiveBacktest={() => setActiveBacktest(null)}
                     loading={loading} 
@@ -249,6 +273,7 @@ function App() {
                     loading={loading || isOptimizing} 
                     onRunBacktest={handleRunBacktest} 
                     onOptimize={handleOptimize}
+                    onSessionStart={handleSessionStart}
                 />
             </div>
         </div>
