@@ -38,6 +38,8 @@ function App() {
 
     const [sessionBacktestRuns, setSessionBacktestRuns] = useState<BacktestRun[]>([]);
     const [activeBacktest, setActiveBacktest] = useState<BacktestRun | null>(null);
+    const [optimizationState, setOptimizationState] = useState<{fileId: string | null; count: number}>({ fileId: null, count: 0 });
+
 
     const addToast = useCallback((message: string, type: ToastMessage['type'] = 'info') => {
         const id = Date.now() + Math.random();
@@ -241,15 +243,31 @@ function App() {
     const handleOptimize = async (file: File, parsedData: TimeSeriesData[]) => {
       if (!user) return;
       setIsOptimizing(true);
-      addToast(`Optimizing strategy for ${file.name}... This may take a moment.`, 'info');
+      
+      const fileId = `${file.name}-${file.size}`;
+      const currentCount = optimizationState.fileId === fileId ? optimizationState.count : 0;
+      
+      addToast(
+        currentCount === 0
+          ? `Optimizing strategy for ${file.name}... This may take a moment.`
+          : `Refining optimization (Lvl ${currentCount + 1})...`,
+        'info'
+      );
+      
       try {
-        const optimizer = new Optimizer(parsedData, strategySettings);
+        const optimizer = new Optimizer(parsedData, strategySettings, currentCount);
         const bestSettings = await optimizer.run();
         if(bestSettings) {
             handleSettingsUpdate(bestSettings);
-            addToast(`Optimization complete! New settings have been applied.`, 'success');
-             // Automatically run a backtest with the new settings for review
+            addToast(
+                currentCount === 0
+                    ? 'Optimization complete! New settings have been applied.'
+                    : `Refinement complete! Settings updated.`,
+                'success'
+            );
+            // Automatically run a backtest with the new settings for review
             await handleBacktestComplete(file, parsedData);
+            setOptimizationState({ fileId, count: currentCount + 1 });
         } else {
             addToast(`Optimization could not find a better configuration.`, 'info');
         }
@@ -260,6 +278,11 @@ function App() {
         setIsOptimizing(false);
       }
     }
+
+    const handleClearFiles = () => {
+        setFiles([]);
+        setOptimizationState({ fileId: null, count: 0 });
+    };
 
 
     if (!session) {
@@ -305,6 +328,8 @@ function App() {
                             onSessionStart={handleSessionStart}
                             recentBacktests={recentBacktests}
                             onViewBacktest={setActiveBacktest}
+                            optimizationState={optimizationState}
+                            onClearFiles={handleClearFiles}
                         />
                     </div>
                 </div>

@@ -155,7 +155,13 @@ export function runBacktestFromData(
     
     const grossProfit = winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
     const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0));
-    const profit_factor = grossLoss > 0 ? grossProfit / grossLoss : 0;
+    
+    let profit_factor = 1; // Default for no trades or break-even
+    if (grossLoss > 0) {
+        profit_factor = grossProfit / grossLoss;
+    } else if (grossProfit > 0) {
+        profit_factor = 999; // Represents an "infinite" profit factor for a perfect run
+    }
 
     let maxDrawdown = 0;
     let peakEquity = 100000;

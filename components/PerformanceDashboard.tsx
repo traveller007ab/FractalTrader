@@ -54,7 +54,8 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
     sessionBacktestRuns.forEach(run => {
         totalPnl += run.metrics?.total_pnl || 0;
         totalTrades += run.metrics?.total_trades || 0;
-        totalWins += (run.metrics?.total_trades || 0) * ((run.metrics?.win_rate || 0) / 100);
+        // Fix: Use Math.round to avoid floating point errors when calculating wins from win rate.
+        totalWins += Math.round((run.metrics?.total_trades || 0) * ((run.metrics?.win_rate || 0) / 100));
     });
 
     // For the aggregate chart, just show the PNL history of the most recent run.
@@ -72,13 +73,13 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
   const focusedBacktestMetrics = useMemo(() => {
     if (!activeBacktest || !activeBacktest.metrics) return null;
     const { metrics } = activeBacktest;
-    // Normalize metric names to match live and aggregate metrics
+    // Fix: Normalize all property names to ensure a consistent data structure.
     return {
         pnl: metrics.total_pnl,
         winRate: metrics.win_rate,
         trades: metrics.total_trades,
         profit_factor: metrics.profit_factor,
-        pnl_history: metrics.pnl_history || [],
+        pnlHistory: metrics.pnl_history || [], // Renamed from pnl_history
         fileName: (activeBacktest.params as any).symbol || 'Focused Run'
     };
   }, [activeBacktest]);

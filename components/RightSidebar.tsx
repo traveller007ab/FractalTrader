@@ -22,6 +22,8 @@ interface RightSidebarProps {
     onSessionStart: () => void;
     recentBacktests: BacktestRun[];
     onViewBacktest: (run: BacktestRun) => void;
+    optimizationState: { fileId: string | null; count: number };
+    onClearFiles: () => void;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = (props) => {

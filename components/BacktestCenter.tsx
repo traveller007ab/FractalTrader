@@ -52,12 +52,15 @@ interface BacktestCenterProps {
     onSessionStart: () => void;
     recentBacktests: BacktestRun[];
     onViewBacktest: (run: BacktestRun) => void;
+    optimizationState: { fileId: string | null; count: number };
+    onClearFiles: () => void;
 }
 
 export const BacktestCenter: React.FC<BacktestCenterProps> = ({ 
     files, setFiles, isBacktesting, setIsBacktesting, isOptimizing, 
     backtestProgress, setBacktestProgress, stopBacktestRef, onRunBacktest, 
-    onOptimize, onSessionStart, recentBacktests, onViewBacktest
+    onOptimize, onSessionStart, recentBacktests, onViewBacktest,
+    optimizationState, onClearFiles
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const folderInputRef = useRef<HTMLInputElement>(null);
@@ -192,6 +195,9 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
         });
     };
     
+    const fileId = files.length === 1 ? `${files[0].file.name}-${files[0].file.size}` : null;
+    const isRefining = fileId && optimizationState.fileId === fileId && optimizationState.count > 0;
+
     return (
         <div className="p-4 space-y-4">
             <div>
@@ -216,7 +222,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                     <div className="flex justify-between items-center">
                         <h3 className="text-md font-semibold text-slate-200">File Queue ({files.length})</h3>
                         <Tooltip content="Clear all files from the queue.">
-                            <button onClick={() => setFiles([])} disabled={isBacktesting || isOptimizing} className="text-slate-400 hover:text-white disabled:opacity-50">
+                            <button onClick={onClearFiles} disabled={isBacktesting || isOptimizing} className="text-slate-400 hover:text-white disabled:opacity-50">
                                 <XMarkIcon className="w-5 h-5"/>
                             </button>
                         </Tooltip>
@@ -257,10 +263,14 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                         )}
                        
                     </div>
-                     <Tooltip content="Find the best parameters for this dataset. Only enabled for a single file.">
+                     <Tooltip content={
+                        isRefining
+                            ? `Run a deeper optimization based on the current settings. (Level ${optimizationState.count + 1})`
+                            : "Find the best parameters for this dataset. Only enabled for a single file."
+                     }>
                         <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || files.length !== 1} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed">
                             {isOptimizing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
-                            {isOptimizing ? "Optimizing..." : "Optimize Strategy"}
+                            {isOptimizing ? "Optimizing..." : (isRefining ? `Refine (Lvl ${optimizationState.count + 1})` : "Optimize Strategy")}
                         </button>
                     </Tooltip>
                 </div>
