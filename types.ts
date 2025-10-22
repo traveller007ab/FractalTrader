@@ -109,8 +109,8 @@ export type Database = {
         Row: {
           ended_at: string
           id: string
-          // Fix: Use specific type for better type safety.
-          metrics: BacktestMetrics | null
+          // Fix: Use any for metrics to resolve Supabase client type inference issues.
+          metrics: any
           // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
           params: any
           started_at: string
@@ -120,8 +120,8 @@ export type Database = {
         Insert: {
           ended_at: string
           id?: string
-          // Fix: Use specific type for better type safety.
-          metrics?: BacktestMetrics | null
+          // Fix: Use any for metrics to resolve Supabase client type inference issues.
+          metrics?: any
           // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
           params: any
           started_at: string
@@ -131,8 +131,8 @@ export type Database = {
         Update: {
           ended_at?: string
           id?: string
-          // Fix: Use specific type for better type safety.
-          metrics?: BacktestMetrics | null
+          // Fix: Use any for metrics to resolve Supabase client type inference issues.
+          metrics?: any
           // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
           params?: any
           started_at?: string
@@ -175,18 +175,18 @@ export type Database = {
       profiles: {
         Row: {
           id: string
-          // Fix: Use specific type for better type safety.
-          strategy_settings: StrategySettings | null
+          // Fix: Use any for strategy_settings to resolve Supabase client type inference issues.
+          strategy_settings: any
         }
         Insert: {
           id: string
-          // Fix: Use specific type for better type safety.
-          strategy_settings?: StrategySettings | null
+          // Fix: Use any for strategy_settings to resolve Supabase client type inference issues.
+          strategy_settings?: any
         }
         Update: {
           id?: string
-          // Fix: Use specific type for better type safety.
-          strategy_settings?: StrategySettings | null
+          // Fix: Use any for strategy_settings to resolve Supabase client type inference issues.
+          strategy_settings?: any
         }
       },
       signals: {
@@ -194,8 +194,8 @@ export type Database = {
           confidence: number
           entry_price: number
           exchange: string
-          // Fix: Use specific type for better type safety.
-          metadata: Partial<SignalMetadata> | null
+          // Fix: Use any for metadata to resolve Supabase client type inference issues.
+          metadata: any
           side: string
           signal_id: string
           size: number
@@ -209,8 +209,8 @@ export type Database = {
           confidence: number
           entry_price: number
           exchange: string
-          // Fix: Use specific type for better type safety.
-          metadata?: Partial<SignalMetadata> | null
+          // Fix: Use any for metadata to resolve Supabase client type inference issues.
+          metadata?: any
           side: string
           signal_id?: string
           size: number
@@ -224,8 +224,8 @@ export type Database = {
           confidence?: number
           entry_price?: number
           exchange?: string
-          // Fix: Use specific type for better type safety.
-          metadata?: Partial<SignalMetadata> | null
+          // Fix: Use any for metadata to resolve Supabase client type inference issues.
+          metadata?: any
           side?: string
           signal_id?: string
           size?: number

@@ -28,5 +28,5 @@ if (splashScreen) {
         splashScreen.addEventListener('transitionend', () => {
             splashScreen.remove();
         });
-    }, 500); // Delay for a better perceived performance
+    }, 1200); // Delay for a better perceived performance
 }
