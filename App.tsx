@@ -11,6 +11,7 @@ import { runBacktestFromData } from './lib/backtester.ts';
 import { Optimizer } from './lib/optimizer.ts';
 import { strategyConfig } from './lib/strategyRBSv2Config.ts';
 import { getSymbolFromFilename } from './lib/utils.ts';
+import { usePageFocus } from './hooks/usePageFocus.ts';
 import type { Session, User } from '@supabase/supabase-js';
 import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData } from './types.ts';
 
@@ -87,6 +88,14 @@ function App() {
             setLoading(false);
         }
     }, [addToast]);
+    
+    // Auto-refetch data when tab becomes visible again
+    usePageFocus(() => {
+        if (user) {
+            addToast('Refreshing data...', 'info');
+            fetchInitialData(user);
+        }
+    });
 
     useEffect(() => {
         const getSession = async () => {
@@ -197,10 +206,15 @@ function App() {
         }
     };
     
-    const handleSettingsUpdate = async (newSettings: StrategySettings) => {
+    const handleSettingsUpdate = async (newSettings: StrategySettings, source: 'user' | 'optimizer' = 'user') => {
         setStrategySettings(newSettings);
         signalEngine.updateSettings(newSettings);
-        addToast('Strategy settings saved and applied to live engine.', 'success');
+
+        if(source === 'optimizer') {
+            addToast('Optimized settings have been applied and saved.', 'success');
+        } else {
+            addToast('Strategy settings saved and applied to live engine.', 'success');
+        }
         
         // Clear any pending optimization results after saving
         if (optimizedSettings) {
@@ -341,7 +355,8 @@ function App() {
                     <div className="flex-shrink-0 w-full lg:w-[26rem] animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                         <RightSidebar 
                             strategySettings={strategySettings} 
-                            onSettingsUpdate={handleSettingsUpdate}
+                            onSettingsUpdate={(settings) => handleSettingsUpdate(settings, 'user')}
+                            onApplyOptimizedSettings={(settings) => handleSettingsUpdate(settings, 'optimizer')}
                             engineLogs={engineLogs}
                             files={files}
                             setFiles={setFiles}

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CopyIcon, ChartIcon } from './icons.tsx';
 
 export const ToastContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="fixed bottom-5 right-5 z-50 space-y-3">
+  <div aria-live="assertive" className="fixed bottom-5 right-5 z-50 space-y-3">
     {children}
   </div>
 );

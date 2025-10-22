@@ -6,6 +6,7 @@ import { Tooltip } from './Tooltip.tsx';
 interface StrategySettingsProps {
   settings: StrategySettingsType;
   onSettingsUpdate: (settings: StrategySettingsType) => void;
+  onApplyOptimizedSettings: (settings: StrategySettingsType) => void;
   logs: string[];
   optimizedSettings: StrategySettingsType | null;
   onClearOptimizedSettings: () => void;
@@ -98,7 +99,7 @@ const OptimizationResults: React.FC<{current: StrategySettingsType, proposed: St
 }
 
 
-export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, onSettingsUpdate, logs, optimizedSettings, onClearOptimizedSettings }) => {
+export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, onSettingsUpdate, onApplyOptimizedSettings, logs, optimizedSettings, onClearOptimizedSettings }) => {
     const [localSettings, setLocalSettings] = useState(settings);
     const [showLogs, setShowLogs] = useState(false);
 
@@ -119,7 +120,7 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
     
     const handleApplyOptimized = () => {
         if(optimizedSettings) {
-            onSettingsUpdate(optimizedSettings);
+            onApplyOptimizedSettings(optimizedSettings);
         }
     }
 

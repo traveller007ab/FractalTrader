@@ -23,7 +23,7 @@ interface DisplayMetrics {
     max_drawdown?: number;
 }
 
-const StatCard: React.FC<{ title: string; value: number | undefined; formatter: (val: number) => string; tooltip: string }> = ({ title, value, formatter, tooltip }) => (
+const StatCardComponent: React.FC<{ title: string; value: number | undefined; formatter: (val: number) => string; tooltip: string }> = ({ title, value, formatter, tooltip }) => (
   <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
      <Tooltip content={tooltip}>
         <h3 className="text-xs font-medium text-slate-400 truncate cursor-help border-b border-dashed border-transparent hover:border-slate-500">{title}</h3>
@@ -33,6 +33,7 @@ const StatCard: React.FC<{ title: string; value: number | undefined; formatter: 
     </p>
   </div>
 );
+const StatCard = React.memo(StatCardComponent);
 
 export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copiedTrades, sessionBacktestRuns, activeBacktest, onClearActiveBacktest }) => {
   const [activeTab, setActiveTab] = useState<'live' | 'backtest'>('live');

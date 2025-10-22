@@ -27,8 +27,7 @@ const getStatus = (signal: Signal, copiedTrade?: CopiedTrade): { text: string; c
       : { text: 'Active', color: 'text-amber-400' };
 };
 
-
-export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
+const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
   const isBuy = signal.side === 'buy';
   const copiedTrade = copiedTrades.find(t => t.signal_id === signal.signal_id && t.user_id === user.id);
   const status = getStatus(signal, copiedTrade);
@@ -49,7 +48,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
     return <span className={color}>{percentage}%</span>;
   }
   
-  const rowClass = isNew ? 'bg-brand-accent/10 animate-fade-in' : '';
+  const rowClass = isNew ? 'animate-highlight-fade' : '';
 
   return (
     <tr className={rowClass}>
@@ -79,3 +78,16 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
     </tr>
   );
 };
+
+// Memoize the component to prevent unnecessary re-renders
+const areEqual = (prevProps: SignalCardProps, nextProps: SignalCardProps) => {
+    if (prevProps.signal.signal_id !== nextProps.signal.signal_id || prevProps.isNew !== nextProps.isNew) {
+        return false;
+    }
+    const prevCopied = prevProps.copiedTrades.find(t => t.signal_id === prevProps.signal.signal_id);
+    const nextCopied = nextProps.copiedTrades.find(t => t.signal_id === nextProps.signal.signal_id);
+
+    return prevCopied?.status === nextCopied?.status && prevCopied?.pnl === nextCopied?.pnl;
+};
+
+export const SignalCard = React.memo(SignalCardComponent, areEqual);

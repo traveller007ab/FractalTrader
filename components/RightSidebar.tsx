@@ -8,6 +8,7 @@ import type { FileWithStatus, OptimizationData } from '../App';
 interface RightSidebarProps {
     strategySettings: StrategySettingsType;
     onSettingsUpdate: (settings: StrategySettingsType) => void;
+    onApplyOptimizedSettings: (settings: StrategySettingsType) => void;
     engineLogs: string[];
     files: FileWithStatus[];
     setFiles: React.Dispatch<React.SetStateAction<FileWithStatus[]>>;
@@ -57,6 +58,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                     <StrategySettings 
                         settings={props.strategySettings}
                         onSettingsUpdate={props.onSettingsUpdate}
+                        onApplyOptimizedSettings={props.onApplyOptimizedSettings}
                         logs={props.engineLogs}
                         optimizedSettings={props.optimizedSettings}
                         onClearOptimizedSettings={props.onClearOptimizedSettings}

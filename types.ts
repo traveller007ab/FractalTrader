@@ -110,8 +110,7 @@ export type Database = {
           ended_at: string
           id: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          metrics: any
+          metrics: BacktestMetrics | null
           // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
           params: any
           started_at: string
@@ -122,8 +121,7 @@ export type Database = {
           ended_at: string
           id?: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          metrics?: any
+          metrics?: BacktestMetrics | null
           // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
           params: any
           started_at: string
@@ -134,8 +132,7 @@ export type Database = {
           ended_at?: string
           id?: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          metrics?: any
+          metrics?: BacktestMetrics | null
           // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
           params?: any
           started_at?: string
@@ -179,20 +176,17 @@ export type Database = {
         Row: {
           id: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          strategy_settings: any
+          strategy_settings: StrategySettings | null
         }
         Insert: {
           id: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          strategy_settings?: any
+          strategy_settings?: StrategySettings | null
         }
         Update: {
           id?: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          strategy_settings?: any
+          strategy_settings?: StrategySettings | null
         }
       },
       signals: {
@@ -201,8 +195,7 @@ export type Database = {
           entry_price: number
           exchange: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          metadata: any
+          metadata: Partial<SignalMetadata> | null
           side: string
           signal_id: string
           size: number
@@ -217,8 +210,7 @@ export type Database = {
           entry_price: number
           exchange: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          metadata?: any
+          metadata?: Partial<SignalMetadata> | null
           side: string
           signal_id?: string
           size: number
@@ -233,8 +225,7 @@ export type Database = {
           entry_price?: number
           exchange?: string
           // Fix: Use specific type for better type safety.
-          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
-          metadata?: any
+          metadata?: Partial<SignalMetadata> | null
           side?: string
           signal_id?: string
           size?: number
