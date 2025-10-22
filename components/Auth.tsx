@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+// Fix: Add file extension to import to ensure the typed supabase client is loaded.
+import { supabase } from '../lib/supabaseClient.ts';
 // Fix: Add .tsx extension to icons import
 import { LogoIcon } from './icons.tsx';
 

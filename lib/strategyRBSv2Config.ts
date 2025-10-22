@@ -1,4 +1,5 @@
-import type { StrategySettings } from '../types';
+// Fix: Add file extension to type import.
+import type { StrategySettings } from '../types.ts';
 
 type SymbolSettings = Partial<StrategySettings> & { exchange: 'BINANCE' | 'OANDA' };
 

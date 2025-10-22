@@ -1,7 +1,8 @@
-import { supabase } from './supabaseClient';
-import { getTimeSeries } from './twelveDataClient';
-import type { Signal, SignalMetadata, StrategySettings } from '../types';
-import { strategyConfig, getSymbolSettings } from './strategyRBSv2Config';
+// Fix: Add file extensions to imports to ensure proper module resolution and typing.
+import { supabase } from './supabaseClient.ts';
+import { getTimeSeries } from './twelveDataClient.ts';
+import type { Signal, SignalMetadata, StrategySettings } from '../types.ts';
+import { strategyConfig, getSymbolSettings } from './strategyRBSv2Config.ts';
 
 // Technical Analysis helper functions
 const calculateSMA = (data: { close: number }[], period: number): number[] => {

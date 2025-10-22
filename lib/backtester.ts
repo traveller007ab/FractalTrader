@@ -1,5 +1,6 @@
-import type { TimeSeriesData, StrategySettings, BacktestMetrics, PnlDataPoint } from '../types';
-import { getSymbolSettings } from './strategyRBSv2Config';
+// Fix: Add file extensions to imports for proper module resolution.
+import type { TimeSeriesData, StrategySettings, BacktestMetrics, PnlDataPoint } from '../types.ts';
+import { getSymbolSettings } from './strategyRBSv2Config.ts';
 
 interface BacktestTrade {
     entry_price: number;

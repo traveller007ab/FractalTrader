@@ -10,6 +10,7 @@ import { signalEngine } from './lib/signalEngine.ts';
 import { runBacktestFromData } from './lib/backtester.ts';
 import { Optimizer } from './lib/optimizer.ts';
 import { strategyConfig } from './lib/strategyRBSv2Config.ts';
+import { getSymbolFromFilename } from './lib/utils.ts';
 import type { Session, User } from '@supabase/supabase-js';
 import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData } from './types.ts';
 
@@ -24,18 +25,6 @@ export interface OptimizationData {
     file: File;
     data: TimeSeriesData[];
 }
-
-// Helper to extract symbol from filename
-const getSymbolFromFilename = (filename: string): string => {
-    const name = filename.toUpperCase().replace('.CSV', '');
-    // Basic replacements, can be expanded
-    if (name.includes('BTCUSD') || name.includes('BTC-USD')) return 'BTC/USD';
-    if (name.includes('ETHUSD') || name.includes('ETH-USD')) return 'ETH/USD';
-    if (name.includes('XAUUSD') || name.includes('GOLD')) return 'XAU/USD';
-    if (name.includes('XAGUSD') || name.includes('SILVER')) return 'XAG/USD';
-    return 'BTC/USD'; // Default fallback
-}
-
 
 function App() {
     const [session, setSession] = useState<Session | null>(null);

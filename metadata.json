@@ -1,5 +1,5 @@
 {
-  "name": "Fractal Shift Trading Bot",
-  "description": "A premium, practical trading product that generates actionable signals derived from a user-provided 'Fractal Shift' strategy using real market data and Supabase for persistence.",
+  "name": "SignalFlow",
+  "description": "A premium trading tool that generates and backtests actionable signals for the 'Fractal Shift' strategy.",
   "requestFramePermissions": []
 }

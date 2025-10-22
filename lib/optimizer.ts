@@ -1,17 +1,9 @@
 import { runBacktestFromData } from './backtester.ts';
-import type { StrategySettings, TimeSeriesData, BacktestMetrics } from '../types';
+import { getSymbolFromFilename } from './utils.ts';
+// Fix: Add file extension to type import.
+import type { StrategySettings, TimeSeriesData, BacktestMetrics } from '../types.ts';
 
 type OptimizableParams = 'smaPeriod' | 'stopLossAtrMultiplier' | 'takeProfitR_R';
-
-// Helper to extract symbol from filename (duplicated from App.tsx for modularity)
-const getSymbolFromFilename = (filename: string): string => {
-    const name = filename.toUpperCase().replace('.CSV', '');
-    if (name.includes('BTCUSD') || name.includes('BTC-USD')) return 'BTC/USD';
-    if (name.includes('ETHUSD') || name.includes('ETH-USD')) return 'ETH/USD';
-    if (name.includes('XAUUSD') || name.includes('GOLD')) return 'XAU/USD';
-    if (name.includes('XAGUSD') || name.includes('SILVER')) return 'XAG/USD';
-    return 'BTC/USD'; // Default fallback
-}
 
 export class Optimizer {
     private datasets: { file: File; data: TimeSeriesData[]; symbol: string }[];

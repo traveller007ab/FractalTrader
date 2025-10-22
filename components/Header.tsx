@@ -13,9 +13,9 @@ export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
     <header className="bg-container-bg sticky top-0 z-40 border-b border-border-color">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          <div className="flex items-center">
-            <LogoIcon className="h-8 w-8 text-brand-accent" />
-            <span className="ml-3 text-xl font-semibold text-slate-100 tracking-tight">SignalFlow</span>
+          <div className="flex items-center group">
+            <LogoIcon className="h-8 w-8 text-brand-accent transition-transform duration-200 ease-in-out group-hover:rotate-[-12deg]" />
+            <span className="ml-3 text-xl font-semibold text-slate-100 tracking-tight transition-colors group-hover:text-white">SignalFlow</span>
           </div>
           <div className="flex items-center">
             {session?.user && (

@@ -12,6 +12,17 @@ interface PerformanceDashboardProps {
   onClearActiveBacktest: () => void;
 }
 
+interface DisplayMetrics {
+    pnl: number;
+    winRate: number;
+    trades: number;
+    pnlHistory: PnlDataPoint[];
+    avgPnlPerTrade?: number;
+    runs?: number;
+    profit_factor?: number;
+    max_drawdown?: number;
+}
+
 const StatCard: React.FC<{ title: string; value: number | undefined; formatter: (val: number) => string; tooltip: string }> = ({ title, value, formatter, tooltip }) => (
   <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
      <Tooltip content={tooltip}>
@@ -26,9 +37,9 @@ const StatCard: React.FC<{ title: string; value: number | undefined; formatter: 
 export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copiedTrades, sessionBacktestRuns, activeBacktest, onClearActiveBacktest }) => {
   const [activeTab, setActiveTab] = useState<'live' | 'backtest'>('live');
 
-  const liveMetrics = useMemo(() => {
+  const liveMetrics: DisplayMetrics = useMemo(() => {
     const closedTrades = copiedTrades.filter(t => t.status === 'closed' && t.pnl != null);
-    if (closedTrades.length === 0) return { pnl: 0, winRate: 0, trades: 0, pnlHistory: [] };
+    if (closedTrades.length === 0) return { pnl: 0, winRate: 0, trades: 0, pnlHistory: [], avgPnlPerTrade: 0 };
     
     let cumulativePnl = 0;
     const pnlHistory = closedTrades
@@ -40,11 +51,12 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
         
     const totalPnl = pnlHistory.length > 0 ? pnlHistory[pnlHistory.length - 1].pnl : 0;
     const winRate = (closedTrades.filter(t => (t.pnl ?? 0) > 0).length / closedTrades.length) * 100;
+    const avgPnlPerTrade = closedTrades.length > 0 ? totalPnl / closedTrades.length : 0;
     
-    return { pnl: totalPnl, winRate, pnlHistory, trades: closedTrades.length };
+    return { pnl: totalPnl, winRate, pnlHistory, trades: closedTrades.length, avgPnlPerTrade };
   }, [copiedTrades]);
 
-  const backtestMetrics = useMemo(() => {
+  const backtestMetrics: DisplayMetrics = useMemo(() => {
     if (sessionBacktestRuns.length === 0) return { pnl: 0, winRate: 0, trades: 0, runs: 0, pnlHistory: [] };
     
     let totalPnl = 0;
@@ -54,11 +66,9 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
     sessionBacktestRuns.forEach(run => {
         totalPnl += run.metrics?.total_pnl || 0;
         totalTrades += run.metrics?.total_trades || 0;
-        // Fix: Use Math.round to avoid floating point errors when calculating wins from win rate.
         totalWins += Math.round((run.metrics?.total_trades || 0) * ((run.metrics?.win_rate || 0) / 100));
     });
 
-    // For the aggregate chart, just show the PNL history of the most recent run.
     const latestRunPnlHistory = sessionBacktestRuns[0]?.metrics?.pnl_history || [];
 
     return {
@@ -70,24 +80,56 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
     };
   }, [sessionBacktestRuns]);
   
-  const focusedBacktestMetrics = useMemo(() => {
+  const focusedBacktestMetrics: (DisplayMetrics & { fileName: string }) | null = useMemo(() => {
     if (!activeBacktest || !activeBacktest.metrics) return null;
     const { metrics } = activeBacktest;
-    // Fix: Normalize all property names to ensure a consistent data structure.
     return {
         pnl: metrics.total_pnl,
         winRate: metrics.win_rate,
         trades: metrics.total_trades,
         profit_factor: metrics.profit_factor,
-        pnlHistory: metrics.pnl_history || [], // Renamed from pnl_history
+        max_drawdown: metrics.max_drawdown,
+        pnlHistory: metrics.pnl_history || [],
         fileName: activeBacktest.params.symbol || 'Focused Run'
     };
   }, [activeBacktest]);
   
   const isBacktestTab = activeTab === 'backtest';
-  const displayMetrics = isBacktestTab ? (focusedBacktestMetrics || backtestMetrics) : liveMetrics;
-  const displayPnlHistory = displayMetrics.pnlHistory || [];
+  const displayPnlHistory = (isBacktestTab ? (focusedBacktestMetrics || backtestMetrics) : liveMetrics).pnlHistory;
   const cardTitle = isBacktestTab ? (focusedBacktestMetrics ? `Focused: ${focusedBacktestMetrics.fileName}` : 'Backtest Session') : 'Live Signals';
+
+  const renderCards = () => {
+    if(isBacktestTab) {
+        if(focusedBacktestMetrics) {
+            return (
+                <>
+                    <StatCard title="Total P&L" value={focusedBacktestMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from this run."/>
+                    <StatCard title="Win Rate" value={focusedBacktestMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of trades that were profitable."/>
+                    <StatCard title="Profit Factor" value={focusedBacktestMetrics.profit_factor} formatter={v => v.toFixed(2)} tooltip="Gross profit divided by gross loss."/>
+                    <StatCard title="Max Drawdown" value={focusedBacktestMetrics.max_drawdown} formatter={v => `${v.toFixed(2)}%`} tooltip="The largest peak-to-trough decline in account equity."/>
+                </>
+            );
+        } else {
+            return (
+                <>
+                    <StatCard title="Total P&L" value={backtestMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Aggregate profit and loss from all backtests in this session."/>
+                    <StatCard title="Win Rate" value={backtestMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The average win rate across all backtests in this session."/>
+                    <StatCard title="Total Trades" value={backtestMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of trades executed across all backtests."/>
+                    <StatCard title="Total Runs" value={backtestMetrics.runs} formatter={v => v.toFixed(0)} tooltip="Total backtests completed in this session."/>
+                </>
+            );
+        }
+    } else {
+        return (
+             <>
+                <StatCard title="Total P&L" value={liveMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from your copied live trades."/>
+                <StatCard title="Win Rate" value={liveMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of your copied trades that were profitable."/>
+                <StatCard title="Total Trades" value={liveMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of copied trades that have been closed."/>
+                <StatCard title="Avg P&L / Trade" value={liveMetrics.avgPnlPerTrade} formatter={v => `$${v.toFixed(2)}`} tooltip="The average profit or loss for each closed trade."/>
+             </>
+        );
+    }
+  };
 
   return (
     <div className="bg-container-bg rounded-lg shadow-lg border border-border-color">
@@ -111,14 +153,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
             )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard title="Total P&L" value={displayMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from this session."/>
-          <StatCard title="Win Rate" value={displayMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of trades that were profitable."/>
-          {/* Use 'in' operator to check for property existence, as value could be 0 */}
-          {/* Fix: Cast displayMetrics to any to resolve incorrect 'unknown' type inference from TypeScript. */}
-          {isBacktestTab && 'runs' in displayMetrics && !focusedBacktestMetrics && <StatCard title="Total Runs" value={(displayMetrics as any).runs} formatter={v => v.toFixed(0)} tooltip="Total backtests completed in this session." />}
-          {/* Fix: Cast displayMetrics to any to resolve incorrect 'unknown' type inference from TypeScript. */}
-          {isBacktestTab && 'profit_factor' in displayMetrics && focusedBacktestMetrics && <StatCard title="Profit Factor" value={(displayMetrics as any).profit_factor} formatter={v => v.toFixed(2)} tooltip="Gross profit divided by gross loss." />}
-          <StatCard title="Total Trades" value={displayMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of closed trades in this session." />
+          {renderCards()}
         </div>
       </div>
       <div className="h-64 p-4">
