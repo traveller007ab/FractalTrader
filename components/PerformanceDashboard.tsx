@@ -24,11 +24,11 @@ interface DisplayMetrics {
 }
 
 const StatCardComponent: React.FC<{ title: string; value: number | undefined; formatter: (val: number) => string; tooltip: string }> = ({ title, value, formatter, tooltip }) => (
-  <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+  <div className="bg-bg-primary/50 dark:bg-slate-900/50 p-3 rounded-lg border border-border">
      <Tooltip content={tooltip}>
-        <h3 className="text-xs font-medium text-slate-400 truncate cursor-help border-b border-dashed border-transparent hover:border-slate-500">{title}</h3>
+        <h3 className="text-xs font-medium text-text-muted truncate cursor-help border-b border-dashed border-transparent hover:border-text-muted/50">{title}</h3>
      </Tooltip>
-    <p className="text-xl font-semibold text-slate-100 tracking-tight mt-1">
+    <p className="text-xl font-semibold text-text-primary tracking-tight mt-1">
       {value !== undefined && !isNaN(value) ? <AnimatedNumber value={value} formatter={formatter} /> : '-'}
     </p>
   </div>
@@ -134,22 +134,22 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
   };
 
   return (
-    <div className="bg-container-bg rounded-lg shadow-lg border border-border-color">
-      <div className="p-4 border-b border-border-color flex items-center justify-between">
+    <div className="bg-bg-secondary rounded-lg shadow-lg border border-border">
+      <div className="p-4 border-b border-border flex items-center justify-between">
          <div className="flex items-center">
-            <ChartIcon className="w-6 h-6 mr-3 text-brand-accent" />
-            <h2 className="text-lg font-semibold text-slate-100">Performance Analytics</h2>
+            <ChartIcon className="w-6 h-6 mr-3 text-accent" />
+            <h2 className="text-lg font-semibold text-text-primary">Performance Analytics</h2>
          </div>
-         <div className="flex items-center bg-slate-800/50 rounded-md p-1 border border-slate-700/50">
-             <button onClick={() => setActiveTab('live')} className={`px-3 py-1 text-sm rounded ${activeTab === 'live' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-700/50'}`}>Live</button>
-             <button onClick={() => setActiveTab('backtest')} className={`px-3 py-1 text-sm rounded ${activeTab === 'backtest' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-700/50'}`}>Backtests</button>
+         <div className="flex items-center bg-bg-primary/50 dark:bg-slate-800/50 rounded-md p-1 border border-border">
+             <button onClick={() => setActiveTab('live')} className={`px-3 py-1 text-sm rounded ${activeTab === 'live' ? 'bg-border dark:bg-slate-700 text-text-primary' : 'text-text-secondary hover:bg-border/50'}`}>Live</button>
+             <button onClick={() => setActiveTab('backtest')} className={`px-3 py-1 text-sm rounded ${activeTab === 'backtest' ? 'bg-border dark:bg-slate-700 text-text-primary' : 'text-text-secondary hover:bg-border/50'}`}>Backtests</button>
          </div>
       </div>
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-slate-200">{cardTitle}</h3>
+            <h3 className="font-semibold text-text-primary">{cardTitle}</h3>
             {focusedBacktestMetrics && (
-                <button onClick={onClearActiveBacktest} className="text-xs flex items-center gap-1 text-slate-400 hover:text-white">
+                <button onClick={onClearActiveBacktest} className="text-xs flex items-center gap-1 text-text-secondary hover:text-text-primary">
                     <XMarkIcon className="w-4 h-4"/> Return to Aggregate
                 </button>
             )}
@@ -162,7 +162,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
          {displayPnlHistory.length > 1 ? (
             <AnalyticsChart data={displayPnlHistory} />
          ) : (
-            <div className="flex items-center justify-center h-full text-slate-500">
+            <div className="flex items-center justify-center h-full text-text-muted">
                 {isBacktestTab ? 'Run a backtest to see results.' : 'Copy trades to see live performance.'}
             </div>
          )}

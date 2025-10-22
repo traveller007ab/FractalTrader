@@ -34,29 +34,29 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
     }
     if (signals.length > 0) {
         return (
-            <table className="min-w-full divide-y divide-border-color">
-                <thead className="bg-slate-900/50 sticky top-0 z-10">
+            <table className="min-w-full divide-y divide-border">
+                <thead className="bg-bg-secondary/80 sticky top-0 z-10 backdrop-blur-sm">
                     <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Symbol</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Time</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Side</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Entry Price</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Stop Loss</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Take Profit</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Symbol</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Time</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Side</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Entry Price</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Stop Loss</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Take Profit</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">
                         <Tooltip content="The bot's calculated confidence in this signal's success, based on multiple factors like volume and trend alignment.">
-                            <span className="cursor-help border-b border-dashed border-slate-500">Confidence</span>
+                            <span className="cursor-help border-b border-dashed border-text-muted/50">Confidence</span>
                         </Tooltip>
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">
                         <Tooltip content="Win/Loss is based on your copied trades. Active signals are recent. Expired signals are older than 1 hour and may no longer be relevant.">
-                            <span className="cursor-help border-b border-dashed border-slate-500">Status</span>
+                            <span className="cursor-help border-b border-dashed border-text-muted/50">Status</span>
                         </Tooltip>
                     </th>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Action</th>
+                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-text-muted uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
-                <tbody className="bg-container-bg divide-y divide-border-color">
+                <tbody className="bg-bg-secondary divide-y divide-border">
                     {signals.map(signal => (
                     <SignalCard key={signal.signal_id} signal={signal} onCopyTrade={onCopyTrade} copiedTrades={copiedTrades} user={user} isNew={signal.signal_id === newSignalId} />
                     ))}
@@ -65,25 +65,25 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
         );
     }
     return (
-        <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center">
-            <SignalIcon className="w-12 h-12 mb-4 text-slate-600" />
-            <p className="font-semibold text-slate-400">Awaiting New Signals</p>
+        <div className="p-12 text-center text-text-muted flex flex-col items-center justify-center">
+            <SignalIcon className="w-12 h-12 mb-4" />
+            <p className="font-semibold text-text-secondary">Awaiting New Signals</p>
             <p className="text-sm mt-1">The engine is running. New signals will appear here automatically.</p>
         </div>
     );
   };
 
   return (
-    <div className="bg-container-bg rounded-lg shadow-lg overflow-hidden border border-border-color">
-      <div className="p-4 border-b border-border-color flex items-center justify-between">
+    <div className="bg-bg-secondary rounded-lg shadow-lg overflow-hidden border border-border">
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center">
-          <SignalIcon className="w-6 h-6 mr-3 text-brand-accent" />
-          <h2 className="text-lg font-semibold text-slate-100">Live Signal Feed</h2>
+          <SignalIcon className="w-6 h-6 mr-3 text-accent" />
+          <h2 className="text-lg font-semibold text-text-primary">Live Signal Feed</h2>
         </div>
         <button
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex items-center px-3 py-1.5 border border-slate-700 text-xs font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent disabled:opacity-50 disabled:cursor-wait transition-colors"
+          className="inline-flex items-center px-3 py-1.5 border border-border text-xs font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50 disabled:cursor-wait transition-colors"
         >
           <RefreshIcon className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh

@@ -82,7 +82,13 @@ function App() {
             }
 
         } catch (error: any) {
-            addToast(`Error fetching data. Please check your connection and refresh.`, 'error');
+            let message = "Error fetching initial data.";
+            if (typeof error.message === 'string' && error.message.toLowerCase().includes('fetch')) {
+                message = "Network error. Please check your connection.";
+            } else if(error.code) {
+                message = `Database error: ${error.message}`;
+            }
+            addToast(message, 'error');
             console.error("Fetch initial data error:", error);
         } finally {
             setLoading(false);
@@ -332,7 +338,7 @@ function App() {
     }
 
     return (
-        <div className="bg-dark-bg min-h-screen text-slate-300">
+        <div className="bg-bg-primary min-h-screen text-text-secondary">
             <Header session={session} onSignOut={() => supabase.auth.signOut()} />
             <main className="container mx-auto p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row gap-6">

@@ -18,11 +18,64 @@
   }
 }
 </script>
+<style>
+  /* Define CSS variables for theming */
+  :root {
+    --color-bg-primary: 240 10% 3.9%;
+    --color-bg-secondary: 240 5.9% 10%;
+    --color-border: 240 3.7% 15.9%;
+    --color-text-primary: 240 5% 95.9%;
+    --color-text-secondary: 240 5.2% 83.9%;
+    --color-text-muted: 240 5% 64.9%;
+    --color-accent: 204 92% 53%; /* sky-500 */
+    --color-accent-hover: 204 92% 60%;
+  }
+
+  .light {
+    --color-bg-primary: 0 0% 100%;
+    --color-bg-secondary: 240 5.9% 95%;
+    --color-border: 240 5.9% 90%;
+    --color-text-primary: 240 10% 3.9%;
+    --color-text-secondary: 240 3.8% 46.1%;
+    --color-text-muted: 240 5.9% 60%;
+    --color-accent: 217 91% 60%; /* blue-600 */
+    --color-accent-hover: 217 91% 65%;
+  }
+
+  /* Apply base styles */
+  body {
+    background-color: hsl(var(--color-bg-primary));
+    color: hsl(var(--color-text-secondary));
+  }
+</style>
 <script>
+    // Immediately apply theme from localStorage to prevent FOUC
+    (function() {
+      try {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'light') {
+          document.documentElement.classList.add('light');
+        } else {
+          // Default to dark
+          document.documentElement.classList.remove('light');
+        }
+      } catch (_) {}
+    })();
+
     tailwind.config = {
+      darkMode: 'class', // Enable class-based dark mode
       theme: {
         extend: {
           colors: {
+            'bg-primary': 'hsl(var(--color-bg-primary))',
+            'bg-secondary': 'hsl(var(--color-bg-secondary))',
+            'border': 'hsl(var(--color-border))',
+            'text-primary': 'hsl(var(--color-text-primary))',
+            'text-secondary': 'hsl(var(--color-text-secondary))',
+            'text-muted': 'hsl(var(--color-text-muted))',
+            'accent': 'hsl(var(--color-accent))',
+            'accent-hover': 'hsl(var(--color-accent-hover))',
+            // Specific colors that don't change with theme
             'brand-accent': '#38bdf8', // sky-400
             'dark-bg': '#020617',     // slate-950
             'container-bg': '#0f172a', // slate-900
@@ -37,17 +90,11 @@
           },
           keyframes: {
             'fade-in-up': {
-              '0%': {
-                opacity: '0',
-                transform: 'translateY(1rem)',
-              },
-              '100%': {
-                opacity: '1',
-                transform: 'translateY(0)',
-              },
+              '0%': { opacity: '0', transform: 'translateY(1rem)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
             },
             'highlight-fade': {
-              '0%': { backgroundColor: 'rgba(56, 189, 248, 0.2)' },
+              '0%': { backgroundColor: 'hsl(var(--color-accent) / 0.2)' },
               '100%': { backgroundColor: 'transparent' },
             },
             'pop-in': {
@@ -55,18 +102,12 @@
                 '100%': { transform: 'scale(1)', opacity: '1' },
             },
             'fade-out-down': {
-              '0%': {
-                opacity: '1',
-                transform: 'translateY(0)',
-              },
-              '100%': {
-                opacity: '0',
-                transform: 'translateY(1rem)',
-              },
+              '0%': { opacity: '1', transform: 'translateY(0)' },
+              '100%': { opacity: '0', transform: 'translateY(1rem)' },
             },
             'shimmer': {
-              '0%': { background-position: '-1000px 0' },
-              '100%': { background-position: '1000px 0' },
+              '0%': { backgroundPosition: '-1000px 0' },
+              '100%': { backgroundPosition: '1000px 0' },
             },
           },
         },
@@ -80,15 +121,14 @@
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #0f172a; /* container-bg */
+      background: hsl(var(--color-bg-secondary));
     }
     ::-webkit-scrollbar-thumb {
-      background-color: #334155; /* slate-700 */
+      background-color: hsl(var(--color-text-muted) / 0.5);
       border-radius: 3px;
-      border: 1px solid #0f172a; /* container-bg, creates padding */
     }
     ::-webkit-scrollbar-thumb:hover {
-      background-color: #38bdf8; /* brand-accent */
+      background-color: hsl(var(--color-accent));
     }
     /* Splash Screen Styles */
     #splash-screen {
@@ -97,18 +137,22 @@
     #splash-screen.fade-out {
         opacity: 0;
     }
+    /* Ensure dark mode splash screen is consistent */
+    .dark #splash-screen {
+        background-color: #020617; /* slate-950 */
+    }
   </style>
 </head>
-  <body class="bg-dark-bg text-slate-300">
-    <div id="splash-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-dark-bg">
+  <body>
+    <div id="splash-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary">
       <div class="text-center animate-fade-in-up">
-        <svg class="h-16 w-16 text-brand-accent mx-auto animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="h-16 w-16 text-accent mx-auto animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 17l10 5 10-5"></path>
             <path d="M2 12l10 5 10-5"></path>
             <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
         </svg>
-        <h1 class="text-2xl font-semibold text-slate-100 mt-4 tracking-wider">SignalFlow</h1>
-        <p class="text-slate-400 mt-1 text-sm">Loading Strategy...</p>
+        <h1 class="text-2xl font-semibold text-text-primary mt-4 tracking-wider">SignalFlow</h1>
+        <p class="text-text-secondary mt-1 text-sm">Loading Strategy...</p>
       </div>
     </div>
     <div id="root"></div>

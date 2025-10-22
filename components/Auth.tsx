@@ -40,14 +40,14 @@ export const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-dark-bg flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-container-bg border border-border-color rounded-lg shadow-xl p-8">
+    <div className="min-h-screen bg-bg-primary flex flex-col justify-center items-center p-4">
+      <div className="max-w-md w-full bg-bg-secondary border border-border rounded-lg shadow-xl p-8">
         <div className="text-center">
             <div className="flex justify-center mb-6">
-                <LogoIcon className="h-12 w-12 text-brand-accent" />
+                <LogoIcon className="h-12 w-12 text-accent" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-100 mb-2">Welcome to SignalFlow</h1>
-            <p className="text-slate-400 mb-8">Sign in or create an account to continue.</p>
+            <h1 className="text-3xl font-bold text-text-primary mb-2">Welcome to SignalFlow</h1>
+            <p className="text-text-secondary mb-8">Sign in or create an account to continue.</p>
         </div>
         
         <form onSubmit={handleLogin} className="space-y-4">
@@ -57,7 +57,7 @@ export const Auth: React.FC = () => {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-accent"
+              className="w-full px-3 py-2 bg-bg-primary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent"
               required
             />
           </div>
@@ -67,7 +67,7 @@ export const Auth: React.FC = () => {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-accent"
+              className="w-full px-3 py-2 bg-bg-primary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent"
               required
             />
           </div>
@@ -77,20 +77,20 @@ export const Auth: React.FC = () => {
                 type="button"
                 onClick={handleSignUp}
                 disabled={loading}
-                className="w-full inline-flex justify-center items-center px-4 py-2 border border-slate-600 text-sm font-medium rounded-md shadow-sm text-slate-200 bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent disabled:opacity-50"
+                className="w-full inline-flex justify-center items-center px-4 py-2 border border-border text-sm font-medium rounded-md shadow-sm text-text-primary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50"
             >
               {loading ? '...' : 'Sign Up'}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent disabled:opacity-50"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50"
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </div>
         </form>
-         <p className="text-xs text-slate-500 mt-6 text-center">
+         <p className="text-xs text-text-muted mt-6 text-center">
           Turn off "Confirm email" in Supabase Auth settings for easier testing.
         </p>
       </div>

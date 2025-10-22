@@ -186,16 +186,16 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
     return (
         <div className="p-4 space-y-4">
             <div>
-                <h3 className="text-md font-semibold text-slate-200 mb-3">Upload Data</h3>
+                <h3 className="text-md font-semibold text-text-primary mb-3">Upload Data</h3>
                 <div className="grid grid-cols-2 gap-2">
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" accept=".csv,.CSV" />
                     <input type="file" ref={folderInputRef} onChange={handleFileChange} multiple webkitdirectory="" className="hidden" />
 
-                    <button onClick={() => fileInputRef.current?.click()} disabled={parsing || isBacktesting || isOptimizing} className="w-full inline-flex justify-center items-center px-3 py-2 border border-slate-700 text-sm font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50">
+                    <button onClick={() => fileInputRef.current?.click()} disabled={parsing || isBacktesting || isOptimizing} className="w-full inline-flex justify-center items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border transition-colors disabled:opacity-50">
                         <DocumentPlusIcon className="w-5 h-5 mr-2" />
                         Upload Files
                     </button>
-                    <button onClick={() => folderInputRef.current?.click()} disabled={parsing || isBacktesting || isOptimizing} className="w-full inline-flex justify-center items-center px-3 py-2 border border-slate-700 text-sm font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors disabled:opacity-50">
+                    <button onClick={() => folderInputRef.current?.click()} disabled={parsing || isBacktesting || isOptimizing} className="w-full inline-flex justify-center items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border transition-colors disabled:opacity-50">
                         <FolderOpenIcon className="w-5 h-5 mr-2" />
                         Upload Folder
                     </button>
@@ -205,17 +205,17 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
             {files.length > 0 && (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                        <h3 className="text-md font-semibold text-slate-200">File Queue ({files.length})</h3>
+                        <h3 className="text-md font-semibold text-text-primary">File Queue ({files.length})</h3>
                         <Tooltip content="Clear all files from the queue.">
-                            <button onClick={onClearFiles} disabled={isBacktesting || isOptimizing} className="text-slate-400 hover:text-white disabled:opacity-50">
+                            <button onClick={onClearFiles} disabled={isBacktesting || isOptimizing} className="text-text-muted hover:text-text-primary disabled:opacity-50">
                                 <XMarkIcon className="w-5 h-5"/>
                             </button>
                         </Tooltip>
                     </div>
-                    <div className="max-h-40 overflow-y-auto bg-slate-900/50 p-2 rounded-md border border-border-color space-y-2">
+                    <div className="max-h-40 overflow-y-auto bg-bg-primary/50 dark:bg-slate-900/50 p-2 rounded-md border border-border space-y-2">
                         {files.map(({file, status, error}, index) => (
-                           <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between text-sm p-1.5 rounded bg-slate-800/50">
-                               <p className="truncate text-slate-300" title={file.name}>{file.name}</p>
+                           <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between text-sm p-1.5 rounded bg-bg-secondary/50 dark:bg-slate-800/50">
+                               <p className="truncate text-text-secondary" title={file.name}>{file.name}</p>
                                {status === 'running' && <SpinnerIcon className="w-4 h-4 text-sky-400 animate-spin" />}
                                {status === 'succeeded' && <CheckCircleIcon className="w-4 h-4 text-emerald-400 animate-pop-in" />}
                                {status === 'failed' && <Tooltip content={error}><XCircleIcon className="w-4 h-4 text-red-400 animate-pop-in cursor-help"/></Tooltip>}
@@ -225,10 +225,10 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                     
                     {isBacktesting && (
                         <div className="space-y-1">
-                             <p className="text-xs font-semibold text-sky-300 text-center">
+                             <p className="text-xs font-semibold text-sky-400 text-center">
                                 {`Running ${backtestProgress.current} of ${backtestProgress.total}`}
                             </p>
-                            <div className="overflow-hidden h-2 text-xs flex rounded bg-sky-200/20">
+                            <div className="overflow-hidden h-2 text-xs flex rounded bg-sky-500/20">
                                 <div style={{ width: `${(backtestProgress.current / backtestProgress.total) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-sky-500 transition-all duration-300"></div>
                             </div>
                         </div>
@@ -236,12 +236,12 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                     
                     <div className="grid grid-cols-2 gap-2 pt-1">
                         {!isBacktesting ? (
-                             <button onClick={handleRunClick} disabled={isOptimizing || files.length === 0} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                             <button onClick={handleRunClick} disabled={isOptimizing || files.length === 0} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600/90 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <PlayIcon className="w-5 h-5 mr-2" />
                                 Run All
                             </button>
                         ) : (
-                             <button onClick={() => stopBacktestRef.current = true} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600/80 hover:bg-red-600">
+                             <button onClick={() => stopBacktestRef.current = true} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600/90 hover:bg-red-600">
                                 <StopIcon className="w-5 h-5 mr-2"/>
                                 Stop
                             </button>
@@ -253,7 +253,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                             ? `Run a deeper optimization based on the current settings. (Level ${optimizationState.count + 1})`
                             : "Find the best parameters by testing against all queued datasets."
                      }>
-                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed">
                             {isOptimizing || parsing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
                             {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : (isRefining ? `Refine (Lvl ${optimizationState.count + 1})` : "Optimize Strategy"))}
                         </button>
@@ -261,7 +261,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                 </div>
             )}
             
-            <hr className="border-border-color my-6" />
+            <hr className="border-border my-6" />
 
             <RecentRunsList runs={recentBacktests} onViewRun={onViewBacktest} />
         </div>

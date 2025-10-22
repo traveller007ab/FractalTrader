@@ -15,9 +15,9 @@ interface StrategySettingsProps {
 const SettingInput: React.FC<{ label: string, value: number, name: keyof StrategySettingsType, step: number, onChange: (name: keyof StrategySettingsType, value: number) => void, tooltip: string }> = 
 ({ label, value, name, step, onChange, tooltip }) => (
     <div>
-        <label htmlFor={name} className="block text-xs font-medium text-slate-400">
+        <label htmlFor={name} className="block text-xs font-medium text-text-secondary">
              <Tooltip content={tooltip}>
-                <span className="cursor-help border-b border-dashed border-slate-500/50">{label}</span>
+                <span className="cursor-help border-b border-dashed border-text-muted/50">{label}</span>
             </Tooltip>
         </label>
         <input
@@ -32,7 +32,7 @@ const SettingInput: React.FC<{ label: string, value: number, name: keyof Strateg
                     onChange(name, val)
                 }
             }}
-            className="mt-1 block w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-accent text-sm"
+            className="mt-1 block w-full px-2 py-1.5 bg-bg-primary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent text-sm"
         />
     </div>
 );
@@ -63,23 +63,23 @@ const OptimizationResults: React.FC<{current: StrategySettingsType, proposed: St
     }).filter(Boolean);
 
     return (
-        <div className="bg-slate-900/50 p-4 rounded-lg border-2 border-brand-accent/50 space-y-3 mb-6 animate-fade-in-up">
+        <div className="bg-accent/10 p-4 rounded-lg border-2 border-accent/50 space-y-3 mb-6 animate-fade-in-up">
             <div className="flex items-center gap-3">
-                <InformationCircleIcon className="w-6 h-6 text-brand-accent flex-shrink-0"/>
+                <InformationCircleIcon className="w-6 h-6 text-accent flex-shrink-0"/>
                 <div>
-                    <h3 className="text-md font-semibold text-slate-100">Optimization Results</h3>
-                    <p className="text-xs text-slate-400">A better configuration was found. Review the changes below.</p>
+                    <h3 className="text-md font-semibold text-text-primary">Optimization Results</h3>
+                    <p className="text-xs text-text-secondary">A better configuration was found. Review the changes below.</p>
                 </div>
             </div>
             <div className="space-y-2 text-sm">
                 {changes.map(change => (
-                    <div key={change!.key} className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
-                        <span className="text-slate-300">{change!.label}</span>
+                    <div key={change!.key} className="flex justify-between items-center bg-bg-primary/50 dark:bg-slate-800/50 p-2 rounded">
+                        <span className="text-text-secondary">{change!.label}</span>
                         <div className="text-right">
-                            <span className="text-red-400/80 line-through mr-2 font-mono">
+                            <span className="text-red-500/80 line-through mr-2 font-mono">
                                 {typeof change!.oldValue === 'number' ? change!.oldValue.toFixed(2) : 'N/A'}
                             </span>
-                            <span className="text-emerald-400 font-mono">
+                            <span className="text-emerald-500 font-mono">
                                 {typeof change!.newValue === 'number' ? change!.newValue.toFixed(2) : 'N/A'}
                             </span>
                         </div>
@@ -87,10 +87,10 @@ const OptimizationResults: React.FC<{current: StrategySettingsType, proposed: St
                 ))}
             </div>
             <div className="flex gap-2 pt-2">
-                <button onClick={onSave} className="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent">
+                <button onClick={onSave} className="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover">
                     <CheckIcon className="w-5 h-5 mr-2"/> Apply & Save
                 </button>
-                 <button onClick={onDiscard} className="w-full inline-flex justify-center items-center px-3 py-2 border border-slate-700 text-sm font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700">
+                 <button onClick={onDiscard} className="w-full inline-flex justify-center items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-text-primary bg-bg-secondary hover:bg-border">
                     <XMarkIcon className="w-5 h-5 mr-2"/> Discard
                 </button>
             </div>
@@ -135,22 +135,22 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
             />
         )}
         <div className="space-y-4">
-             <h3 className="text-md font-semibold text-slate-200">Risk Management (Base Settings)</h3>
+             <h3 className="text-md font-semibold text-text-primary">Risk Management (Base Settings)</h3>
              <div className="grid grid-cols-2 gap-4">
                 <SettingInput label="Risk %" value={localSettings.riskPercent} name="riskPercent" step={0.1} onChange={handleSettingChange} tooltip="Base percentage of total equity to risk per trade. Symbol-specific settings may override this."/>
                 <SettingInput label="R:R Ratio" value={localSettings.takeProfitR_R} name="takeProfitR_R" step={0.1} onChange={handleSettingChange} tooltip="Base ratio of take profit to stop loss. Symbol-specific settings may override this."/>
                 <SettingInput label="Stop Loss ATR" value={localSettings.stopLossAtrMultiplier} name="stopLossAtrMultiplier" step={0.1} onChange={handleSettingChange} tooltip="Base ATR multiplier for stop loss. Symbol-specific settings may override this."/>
              </div>
              
-             <h3 className="text-md font-semibold text-slate-200 pt-2">Strategy Parameters (Base Settings)</h3>
+             <h3 className="text-md font-semibold text-text-primary pt-2">Strategy Parameters (Base Settings)</h3>
              <div className="grid grid-cols-2 gap-4">
                  <SettingInput label="SMA Period" value={localSettings.smaPeriod} name="smaPeriod" step={1} onChange={handleSettingChange} tooltip="Lookback period for the Simple Moving Average (SMA) for trend detection."/>
                  <SettingInput label="ATR Period" value={localSettings.atrPeriod} name="atrPeriod" step={1} onChange={handleSettingChange} tooltip="Lookback period for the Average True Range (ATR) calculation."/>
                  <SettingInput label="Shift ATR Mult" value={localSettings.shiftAtrMultiplier} name="shiftAtrMultiplier" step={0.05} onChange={handleSettingChange} tooltip="Base ATR multiplier to confirm a 'shift'. Symbol-specific settings may override this."/>
              </div>
-             <p className="text-xs text-slate-500 text-center pt-1">Note: These are base settings. The engine uses specific, optimized parameters for each symbol (e.g., BTC/USD, XAU/USD).</p>
+             <p className="text-xs text-text-muted text-center pt-1">Note: These are base settings. The engine uses specific, optimized parameters for each symbol (e.g., BTC/USD, XAU/USD).</p>
 
-             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent"
+             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent"
                 disabled={!!optimizedSettings}
              >
                 Update Base Live Settings
@@ -159,12 +159,12 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
 
         <div>
             <button onClick={() => setShowLogs(!showLogs)} className="flex justify-between items-center w-full text-left">
-                <h3 className="text-md font-semibold text-slate-200">Live Engine Logs</h3>
-                <ChevronDownIcon className={`w-5 h-5 text-slate-400 transition-transform ${showLogs ? 'rotate-180' : ''}`} />
+                <h3 className="text-md font-semibold text-text-primary">Live Engine Logs</h3>
+                <ChevronDownIcon className={`w-5 h-5 text-text-secondary transition-transform ${showLogs ? 'rotate-180' : ''}`} />
             </button>
             {showLogs && (
-                <div className="mt-3 bg-slate-900/50 p-3 rounded-md border border-border-color max-h-48 overflow-y-auto">
-                    <pre className="text-xs text-slate-400 font-mono whitespace-pre-wrap">
+                <div className="mt-3 bg-bg-primary/50 dark:bg-slate-900/50 p-3 rounded-md border border-border max-h-48 overflow-y-auto">
+                    <pre className="text-xs text-text-secondary font-mono whitespace-pre-wrap">
                         {logs.length > 0 ? logs.join('\n') : 'Awaiting engine logs...'}
                     </pre>
                 </div>

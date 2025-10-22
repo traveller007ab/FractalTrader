@@ -12,19 +12,19 @@ interface SignalCardProps {
   isNew: boolean;
 }
 
-const getStatus = (signal: Signal, copiedTrade?: CopiedTrade): { text: string; color: string } => {
+const getStatus = (signal: Signal, copiedTrade?: CopiedTrade): { text: string; color: string; bg: string } => {
     if (copiedTrade) {
         if (copiedTrade.status === 'closed') {
             return (copiedTrade.pnl ?? 0) >= 0 
-                ? { text: 'Win', color: 'text-emerald-400' }
-                : { text: 'Loss', color: 'text-red-400' };
+                ? { text: 'Win', color: 'text-emerald-500', bg: 'bg-emerald-500/20' }
+                : { text: 'Loss', color: 'text-red-500', bg: 'bg-red-500/20' };
         }
-        return { text: 'Copied', color: 'text-sky-400' };
+        return { text: 'Copied', color: 'text-sky-500', bg: 'bg-sky-500/20' };
     }
     const signalAgeHours = (Date.now() - new Date(signal.timestamp).getTime()) / (1000 * 60 * 60);
     return signalAgeHours > 1 
-      ? { text: 'Expired', color: 'text-slate-500' }
-      : { text: 'Active', color: 'text-amber-400' };
+      ? { text: 'Expired', color: 'text-text-muted', bg: 'bg-text-muted/20' }
+      : { text: 'Active', color: 'text-amber-500', bg: 'bg-amber-500/20' };
 };
 
 const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
@@ -41,10 +41,10 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
   
   const formatConfidence = (confidence: number) => {
     if (typeof confidence !== 'number' || isNaN(confidence)) {
-        return <span className="text-slate-400">--%</span>;
+        return <span className="text-text-muted">--%</span>;
     }
     const percentage = (confidence * 100).toFixed(1);
-    const color = confidence > 0.75 ? 'text-emerald-400' : confidence > 0.60 ? 'text-amber-400' : 'text-slate-400';
+    const color = confidence > 0.75 ? 'text-emerald-500' : confidence > 0.60 ? 'text-amber-500' : 'text-text-muted';
     return <span className={color}>{percentage}%</span>;
   }
   
@@ -52,15 +52,15 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
 
   return (
     <tr className={rowClass}>
-      <td className="px-4 py-3 text-sm font-medium text-slate-200 whitespace-nowrap">{signal.symbol}</td>
-      <td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">{new Date(signal.timestamp).toLocaleTimeString()}</td>
-      <td className={`px-4 py-3 text-sm font-semibold whitespace-nowrap ${isBuy ? 'text-emerald-400' : 'text-red-400'}`}>{signal.side.toUpperCase()}</td>
-      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.entry_price)}</td>
-      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
-      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
-      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>
+      <td className="px-4 py-3 text-sm font-medium text-text-primary whitespace-nowrap">{signal.symbol}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">{new Date(signal.timestamp).toLocaleTimeString()}</td>
+      <td className={`px-4 py-3 text-sm font-semibold whitespace-nowrap ${isBuy ? 'text-emerald-500' : 'text-red-500'}`}>{signal.side.toUpperCase()}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.entry_price)}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
+      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>
       <td className="px-4 py-3 text-sm whitespace-nowrap">
-        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-opacity-20 ${status.color.replace('text-', 'bg-')} ${status.color}`}>
+        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.bg} ${status.color}`}>
             {status.text}
         </span>
       </td>
@@ -69,7 +69,7 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
             <button
             onClick={() => onCopyTrade(signal)}
             disabled={!!copiedTrade}
-            className="inline-flex items-center p-2 border border-slate-700 text-xs font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center p-2 border border-border text-xs font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
                 <CopyIcon className="w-4 h-4" />
             </button>

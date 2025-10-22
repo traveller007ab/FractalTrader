@@ -33,23 +33,23 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
     const [activeTab, setActiveTab] = useState<'strategy' | 'backtest'>('strategy');
 
     return (
-        <div className="bg-container-bg rounded-lg shadow-lg border border-border-color h-full flex flex-col max-h-[calc(100vh-6rem)]">
-            <div className="flex border-b border-border-color flex-shrink-0">
+        <div className="bg-bg-secondary rounded-lg shadow-lg border border-border h-full flex flex-col max-h-[calc(100vh-6rem)]">
+            <div className="flex border-b border-border flex-shrink-0">
                 <button
                     onClick={() => setActiveTab('strategy')}
-                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'strategy' ? 'text-brand-accent' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'strategy' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
                 >
                     <ListBulletIcon className="w-5 h-5" />
                     Strategy
-                    {activeTab === 'strategy' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-accent"></div>}
+                    {activeTab === 'strategy' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
                 </button>
                 <button
                     onClick={() => setActiveTab('backtest')}
-                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'backtest' ? 'text-brand-accent' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'backtest' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
                 >
                     <BeakerIcon className="w-5 h-5" />
                     Backtest
-                    {activeTab === 'backtest' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-accent"></div>}
+                    {activeTab === 'backtest' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
                 </button>
             </div>
             

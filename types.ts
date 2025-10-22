@@ -101,7 +101,6 @@ export interface ToastMessage {
 
 
 // Supabase type structure for type safety
-// Fix: Changed to 'type' to resolve Supabase client type inference issues.
 export type Database = {
   public: {
     Tables: {
@@ -109,10 +108,10 @@ export type Database = {
         Row: {
           ended_at: string
           id: string
-          // Fix: Use any for metrics to resolve Supabase client type inference issues.
-          metrics: any
-          // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
-          params: any
+          // Fix: Using a specific type for the JSONB column instead of `any` to aid type inference.
+          metrics: BacktestMetrics | null
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          params: Record<string, any>
           started_at: string
           strategy: string
           user_id: string
@@ -120,10 +119,10 @@ export type Database = {
         Insert: {
           ended_at: string
           id?: string
-          // Fix: Use any for metrics to resolve Supabase client type inference issues.
-          metrics?: any
-          // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
-          params: any
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          metrics?: BacktestMetrics | null
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          params: Record<string, any>
           started_at: string
           strategy: string
           user_id: string
@@ -131,10 +130,10 @@ export type Database = {
         Update: {
           ended_at?: string
           id?: string
-          // Fix: Use any for metrics to resolve Supabase client type inference issues.
-          metrics?: any
-          // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
-          params?: any
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          metrics?: BacktestMetrics | null
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          params?: Record<string, any>
           started_at?: string
           strategy?: string
           user_id?: string
@@ -148,7 +147,8 @@ export type Database = {
           id: string
           pnl: number | null
           signal_id: string
-          status: string
+          // Fix: Using a specific string literal type for `status` to match the application logic.
+          status: "open" | "closed"
           user_id: string
         }
         Insert: {
@@ -158,7 +158,8 @@ export type Database = {
           id?: string
           pnl?: number | null
           signal_id: string
-          status: string
+          // Fix: Using a specific string literal type for `status` to match the application logic.
+          status: "open" | "closed"
           user_id: string
         }
         Update: {
@@ -168,35 +169,38 @@ export type Database = {
           id?: string
           pnl?: number | null
           signal_id?: string
-          status?: string
+          // Fix: Using a specific string literal type for `status` to match the application logic.
+          status?: "open" | "closed"
           user_id?: string
         }
       },
       profiles: {
         Row: {
           id: string
-          // Fix: Use any for strategy_settings to resolve Supabase client type inference issues.
-          strategy_settings: any
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          strategy_settings: StrategySettings | null
         }
         Insert: {
           id: string
-          // Fix: Use any for strategy_settings to resolve Supabase client type inference issues.
-          strategy_settings?: any
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          strategy_settings?: StrategySettings | null
         }
         Update: {
           id?: string
-          // Fix: Use any for strategy_settings to resolve Supabase client type inference issues.
-          strategy_settings?: any
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          strategy_settings?: StrategySettings | null
         }
       },
       signals: {
         Row: {
           confidence: number
           entry_price: number
-          exchange: string
-          // Fix: Use any for metadata to resolve Supabase client type inference issues.
-          metadata: any
-          side: string
+          // Fix: Using a specific string literal type for `exchange` to match the application logic.
+          exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA'
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          metadata: Partial<SignalMetadata> | null
+          // Fix: Using a specific string literal type for `side` to match the application logic.
+          side: 'buy' | 'sell'
           signal_id: string
           size: number
           stop_loss: number
@@ -208,10 +212,12 @@ export type Database = {
         Insert: {
           confidence: number
           entry_price: number
-          exchange: string
-          // Fix: Use any for metadata to resolve Supabase client type inference issues.
-          metadata?: any
-          side: string
+          // Fix: Using a specific string literal type for `exchange` to match the application logic.
+          exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA'
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          metadata?: Partial<SignalMetadata> | null
+          // Fix: Using a specific string literal type for `side` to match the application logic.
+          side: 'buy' | 'sell'
           signal_id?: string
           size: number
           stop_loss: number
@@ -223,10 +229,12 @@ export type Database = {
         Update: {
           confidence?: number
           entry_price?: number
-          exchange?: string
-          // Fix: Use any for metadata to resolve Supabase client type inference issues.
-          metadata?: any
-          side?: string
+          // Fix: Using a specific string literal type for `exchange` to match the application logic.
+          exchange?: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA'
+          // Fix: Using a specific type for the JSONB column instead of `any`.
+          metadata?: Partial<SignalMetadata> | null
+          // Fix: Using a specific string literal type for `side` to match the application logic.
+          side?: 'buy' | 'sell'
           signal_id?: string
           size?: number
           stop_loss?: number
