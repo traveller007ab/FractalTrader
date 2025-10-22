@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-// Fix: Resolve name conflict between imported type and component by aliasing the type.
 import type { StrategySettings as StrategySettingsType } from '../types';
-import { ChevronDownIcon } from './icons.tsx';
+import { ChevronDownIcon, CheckIcon, InformationCircleIcon, XMarkIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip.tsx';
 
 interface StrategySettingsProps {
   settings: StrategySettingsType;
   onSettingsUpdate: (settings: StrategySettingsType) => void;
   logs: string[];
+  optimizedSettings: StrategySettingsType | null;
+  onClearOptimizedSettings: () => void;
 }
 
 const SettingInput: React.FC<{ label: string, value: number, name: keyof StrategySettingsType, step: number, onChange: (name: keyof StrategySettingsType, value: number) => void, tooltip: string }> = 
@@ -35,14 +36,78 @@ const SettingInput: React.FC<{ label: string, value: number, name: keyof Strateg
     </div>
 );
 
-// Fix: This component was named the same as an imported type, causing a declaration merge error. The type is now aliased.
-export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, onSettingsUpdate, logs }) => {
+
+const OptimizationResults: React.FC<{current: StrategySettingsType, proposed: StrategySettingsType, onSave: () => void, onDiscard: () => void}> = ({ current, proposed, onSave, onDiscard }) => {
+    
+    const changes = (Object.keys(proposed) as Array<keyof StrategySettingsType>).map(key => {
+        const oldValue = current[key];
+        const newValue = proposed[key];
+
+        let areDifferent = false;
+        if (typeof oldValue === 'number' && typeof newValue === 'number') {
+            areDifferent = oldValue.toFixed(4) !== newValue.toFixed(4);
+        } else {
+            // If types are different or one is undefined, they are different.
+            areDifferent = oldValue !== newValue;
+        }
+
+        if (!areDifferent) return null;
+
+        return {
+            key,
+            label: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+            oldValue,
+            newValue
+        };
+    }).filter(Boolean);
+
+    return (
+        <div className="bg-slate-900/50 p-4 rounded-lg border-2 border-brand-accent/50 space-y-3 mb-6 animate-fade-in-up">
+            <div className="flex items-center gap-3">
+                <InformationCircleIcon className="w-6 h-6 text-brand-accent flex-shrink-0"/>
+                <div>
+                    <h3 className="text-md font-semibold text-slate-100">Optimization Results</h3>
+                    <p className="text-xs text-slate-400">A better configuration was found. Review the changes below.</p>
+                </div>
+            </div>
+            <div className="space-y-2 text-sm">
+                {changes.map(change => (
+                    <div key={change!.key} className="flex justify-between items-center bg-slate-800/50 p-2 rounded">
+                        <span className="text-slate-300">{change!.label}</span>
+                        <div className="text-right">
+                            <span className="text-red-400/80 line-through mr-2 font-mono">
+                                {typeof change!.oldValue === 'number' ? change!.oldValue.toFixed(2) : 'N/A'}
+                            </span>
+                            <span className="text-emerald-400 font-mono">
+                                {typeof change!.newValue === 'number' ? change!.newValue.toFixed(2) : 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <div className="flex gap-2 pt-2">
+                <button onClick={onSave} className="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent">
+                    <CheckIcon className="w-5 h-5 mr-2"/> Apply & Save
+                </button>
+                 <button onClick={onDiscard} className="w-full inline-flex justify-center items-center px-3 py-2 border border-slate-700 text-sm font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700">
+                    <XMarkIcon className="w-5 h-5 mr-2"/> Discard
+                </button>
+            </div>
+        </div>
+    );
+}
+
+
+export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, onSettingsUpdate, logs, optimizedSettings, onClearOptimizedSettings }) => {
     const [localSettings, setLocalSettings] = useState(settings);
     const [showLogs, setShowLogs] = useState(false);
 
     useEffect(() => {
-        setLocalSettings(settings);
-    }, [settings]);
+        // If there are no pending optimized settings, sync with the global state
+        if(!optimizedSettings) {
+            setLocalSettings(settings);
+        }
+    }, [settings, optimizedSettings]);
 
     const handleSettingChange = (name: keyof StrategySettingsType, value: number) => {
         setLocalSettings(prev => ({...prev, [name]: value}));
@@ -51,9 +116,23 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
     const handleSave = () => {
         onSettingsUpdate(localSettings);
     };
+    
+    const handleApplyOptimized = () => {
+        if(optimizedSettings) {
+            onSettingsUpdate(optimizedSettings);
+        }
+    }
 
   return (
     <div className="p-4 space-y-6">
+        {optimizedSettings && (
+            <OptimizationResults 
+                current={settings} 
+                proposed={optimizedSettings} 
+                onSave={handleApplyOptimized} 
+                onDiscard={onClearOptimizedSettings}
+            />
+        )}
         <div className="space-y-4">
              <h3 className="text-md font-semibold text-slate-200">Risk Management (Base Settings)</h3>
              <div className="grid grid-cols-2 gap-4">
@@ -70,7 +149,9 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
              </div>
              <p className="text-xs text-slate-500 text-center pt-1">Note: These are base settings. The engine uses specific, optimized parameters for each symbol (e.g., BTC/USD, XAU/USD).</p>
 
-             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-accent/80 hover:bg-brand-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent">
+             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-slate-700 text-sm font-medium rounded-md text-slate-300 bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-container-bg focus:ring-brand-accent"
+                disabled={!!optimizedSettings}
+             >
                 Update Base Live Settings
             </button>
         </div>

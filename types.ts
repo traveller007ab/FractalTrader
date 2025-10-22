@@ -16,7 +16,7 @@ export interface Signal {
   exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA';
   side: 'buy' | 'sell';
   size: number;
-  entry: number;
+  entry_price: number;
   stop_loss: number;
   take_profit: number;
   confidence: number;
@@ -50,7 +50,7 @@ export interface BacktestRun {
   id: string;
   user_id: string;
   strategy: string;
-  params: { [key: string]: any };
+  params: any;
   metrics: BacktestMetrics | null;
   started_at: string;
   ended_at: string;
@@ -101,47 +101,162 @@ export interface ToastMessage {
 
 
 // Supabase type structure for type safety
-export interface Database {
+// Fix: Changed to 'type' to resolve Supabase client type inference issues.
+export type Database = {
   public: {
     Tables: {
-      // Fix: Add definition for the 'profiles' table to resolve type errors with Supabase client.
+      backtest_runs: {
+        Row: {
+          ended_at: string
+          id: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          metrics: any
+          // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
+          params: any
+          started_at: string
+          strategy: string
+          user_id: string
+        }
+        Insert: {
+          ended_at: string
+          id?: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          metrics?: any
+          // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
+          params: any
+          started_at: string
+          strategy: string
+          user_id: string
+        }
+        Update: {
+          ended_at?: string
+          id?: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          metrics?: any
+          // Fix: Use `any` for `params` to resolve Supabase client type inference issues.
+          params?: any
+          started_at?: string
+          strategy?: string
+          user_id?: string
+        }
+      },
+      copied_trades: {
+        Row: {
+          entry_price: number
+          executed_at: string
+          exit_price: number | null
+          id: string
+          pnl: number | null
+          signal_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          entry_price: number
+          executed_at: string
+          exit_price?: number | null
+          id?: string
+          pnl?: number | null
+          signal_id: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          entry_price?: number
+          executed_at?: string
+          exit_price?: number | null
+          id?: string
+          pnl?: number | null
+          signal_id?: string
+          status?: string
+          user_id?: string
+        }
+      },
       profiles: {
         Row: {
-          id: string;
-          strategy_settings: StrategySettings | null;
-        };
+          id: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          strategy_settings: any
+        }
         Insert: {
-          id: string;
-          strategy_settings: StrategySettings;
-        };
-        Update: Partial<{
-          id: string;
-          strategy_settings: StrategySettings;
-        }>;
-      };
-      backtest_runs: {
-        Row: BacktestRun;
-        // Fix: Changed from Omit<BacktestRun, 'id'> because the client generates and inserts the UUID.
-        Insert: BacktestRun;
-        Update: Partial<BacktestRun>;
-      };
-      copied_trades: {
-        Row: CopiedTrade;
-        Insert: Omit<CopiedTrade, 'id'>;
-        Update: Partial<CopiedTrade>;
-      };
+          id: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          strategy_settings?: any
+        }
+        Update: {
+          id?: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          strategy_settings?: any
+        }
+      },
       signals: {
-          Row: Signal;
-          Insert: Omit<Signal, 'signal_id' | 'timestamp'>;
-          Update: Partial<Signal>;
+        Row: {
+          confidence: number
+          entry_price: number
+          exchange: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          metadata: any
+          side: string
+          signal_id: string
+          size: number
+          stop_loss: number
+          strategy: string
+          symbol: string
+          take_profit: number
+          timestamp: string
+        }
+        Insert: {
+          confidence: number
+          entry_price: number
+          exchange: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          metadata?: any
+          side: string
+          signal_id?: string
+          size: number
+          stop_loss: number
+          strategy: string
+          symbol: string
+          take_profit: number
+          timestamp?: string
+        }
+        Update: {
+          confidence?: number
+          entry_price?: number
+          exchange?: string
+          // Fix: Use specific type for better type safety.
+          // Fix: Reverted complex type to 'any' to resolve Supabase client type inference issues.
+          metadata?: any
+          side?: string
+          signal_id?: string
+          size?: number
+          stop_loss?: number
+          strategy?: string
+          symbol?: string
+          take_profit?: number
+          timestamp?: string
+        }
       }
-    };
-    // Fix: Add empty Views and Functions to the Database interface to fully conform to the expected structure and resolve type inference issues with the Supabase client.
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
-  };
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }

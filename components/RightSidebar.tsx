@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { StrategySettings } from './StrategySettings';
-import { BacktestCenter } from './BacktestCenter';
-import { BeakerIcon, ListBulletIcon } from './icons';
+import { StrategySettings } from './StrategySettings.tsx';
+import { BacktestCenter } from './BacktestCenter.tsx';
+import { BeakerIcon, ListBulletIcon } from './icons.tsx';
 import type { StrategySettings as StrategySettingsType, BacktestRun } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
 
@@ -24,6 +24,8 @@ interface RightSidebarProps {
     onViewBacktest: (run: BacktestRun) => void;
     optimizationState: { fileId: string | null; count: number };
     onClearFiles: () => void;
+    optimizedSettings: StrategySettingsType | null;
+    onClearOptimizedSettings: () => void;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
@@ -56,6 +58,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                         settings={props.strategySettings}
                         onSettingsUpdate={props.onSettingsUpdate}
                         logs={props.engineLogs}
+                        optimizedSettings={props.optimizedSettings}
+                        onClearOptimizedSettings={props.onClearOptimizedSettings}
                     />
                 ) : (
                     <BacktestCenter {...props} />

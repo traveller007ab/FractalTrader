@@ -90,7 +90,8 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
         profit_factor: metrics.profit_factor,
         max_drawdown: metrics.max_drawdown,
         pnlHistory: metrics.pnl_history || [],
-        fileName: activeBacktest.params.symbol || 'Focused Run'
+        // Fix: Removed `as any` cast as `params` is now typed as `any`.
+        fileName: activeBacktest.params?.symbol || 'Focused Run'
     };
   }, [activeBacktest]);
   

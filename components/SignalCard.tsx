@@ -34,10 +34,16 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
   const status = getStatus(signal, copiedTrade);
 
   const formatPrice = (price: number) => {
+      if (typeof price !== 'number' || isNaN(price)) {
+        return 'N/A';
+      }
       return price.toFixed(price > 100 ? 2 : 4);
   };
   
   const formatConfidence = (confidence: number) => {
+    if (typeof confidence !== 'number' || isNaN(confidence)) {
+        return <span className="text-slate-400">--%</span>;
+    }
     const percentage = (confidence * 100).toFixed(1);
     const color = confidence > 0.75 ? 'text-emerald-400' : confidence > 0.60 ? 'text-amber-400' : 'text-slate-400';
     return <span className={color}>{percentage}%</span>;
@@ -50,7 +56,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onCopyTrade, cop
       <td className="px-4 py-3 text-sm font-medium text-slate-200 whitespace-nowrap">{signal.symbol}</td>
       <td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">{new Date(signal.timestamp).toLocaleTimeString()}</td>
       <td className={`px-4 py-3 text-sm font-semibold whitespace-nowrap ${isBuy ? 'text-emerald-400' : 'text-red-400'}`}>{signal.side.toUpperCase()}</td>
-      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.entry)}</td>
+      <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.entry_price)}</td>
       <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
       <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
       <td className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>

@@ -1,4 +1,3 @@
-// Fix: Add file extension to type import.
 import type { StrategySettings } from '../types.ts';
 
 type SymbolSettings = Partial<StrategySettings> & { exchange: 'BINANCE' | 'OANDA' };
@@ -50,12 +49,6 @@ export const strategyConfig: StrategyConfig = {
         'XAU/USD': {
             exchange: 'OANDA',
             riskPercent: 1.0,
-            takeProfitR_R: 2.0,
-            stopLossAtrMultiplier: 1.6,
-        },
-        'XAG/USD': {
-            exchange: 'OANDA',
-            riskPercent: 1.1,
             takeProfitR_R: 2.0,
             stopLossAtrMultiplier: 1.6,
         },

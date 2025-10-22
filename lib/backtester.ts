@@ -40,16 +40,22 @@ export function runBacktestFromData(
     baseSettings: StrategySettings,
     symbol: string // Symbol is now required for per-symbol settings
 ): { trades: BacktestTrade[], metrics: BacktestMetrics } {
+    const settings = getSymbolSettings(symbol, baseSettings);
+    const requiredDataLength = Math.max(settings.smaPeriod + 3, 50);
+
+    if (!allData || allData.length < requiredDataLength) {
+        throw new Error(`Insufficient historical data. The strategy requires at least ${requiredDataLength} data points, but only ${allData?.length || 0} were provided.`);
+    }
+    
     const trades: BacktestTrade[] = [];
     let openTrade: BacktestTrade | null = null;
     let accountEquity = 100000;
     const pnlHistory: PnlDataPoint[] = [{ date: allData[0]?.datetime || new Date().toISOString(), pnl: 0 }];
     let cumulativePnl = 0;
 
-    const settings = getSymbolSettings(symbol, baseSettings);
     const { smaPeriod, atrPeriod, shiftAtrMultiplier, stopLossAtrMultiplier, takeProfitR_R, riskPercent } = settings;
 
-    for (let i = Math.max(smaPeriod + 3, 50); i < allData.length; i++) {
+    for (let i = requiredDataLength; i < allData.length; i++) {
         const currentBar = allData[i];
         
         // --- Manage Open Trade ---

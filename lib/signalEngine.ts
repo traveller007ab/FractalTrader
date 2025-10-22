@@ -46,7 +46,7 @@ const symbols = Object.keys(strategyConfig.symbolSettings);
 
 class SignalEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
-  private lastSignalInfo: Map<string, { timestamp: number; entry: number; side: 'buy' | 'sell' }> = new Map();
+  private lastSignalInfo: Map<string, { timestamp: number; entry_price: number; side: 'buy' | 'sell' }> = new Map();
   private settings: StrategySettings = strategyConfig.base;
   private currentSymbolIndex = 0;
   private onError: ((error: Error) => void) | null = null;
@@ -200,7 +200,7 @@ class SignalEngine {
         console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Cooldown period active.`);
         return;
     }
-    if (lastSignal && Math.abs(entryPrice - lastSignal.entry) / lastSignal.entry < duplicateThresholdPct) {
+    if (lastSignal && Math.abs(entryPrice - lastSignal.entry_price) / lastSignal.entry_price < duplicateThresholdPct) {
         console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Duplicate entry price.`);
         return;
     }
@@ -221,7 +221,7 @@ class SignalEngine {
       symbol: symbol,
       exchange: strategyConfig.symbolSettings[symbol as keyof typeof strategyConfig.symbolSettings].exchange as Signal['exchange'],
       side: shift,
-      entry: entryPrice,
+      entry_price: entryPrice,
       size,
       stop_loss,
       take_profit,
@@ -231,12 +231,11 @@ class SignalEngine {
     
     console.log(`[SignalEngine] Emitting NEW SIGNAL for ${symbol}:`, newSignal);
     
-    // Fix: This error is resolved by adding the 'profiles' table to the Database interface in types.ts, which corrects the Supabase client's type inference.
     const { error } = await supabase.from('signals').insert(newSignal);
     if (error) {
       console.error('[SignalEngine] Error inserting signal:', error);
     } else {
-        this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), entry: entryPrice, side: shift });
+        this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), entry_price: entryPrice, side: shift });
     }
   }
 

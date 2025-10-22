@@ -15,7 +15,7 @@ export const RecentRunsList: React.FC<RecentRunsListProps> = ({ runs, onViewRun 
                 {runs.length > 0 ? runs.map(run => (
                     <div key={run.id} className="bg-slate-800/50 p-2.5 rounded-md border border-slate-700/50 flex justify-between items-center animate-fade-in-up">
                         <div>
-                            <p className="text-sm font-medium text-slate-200 truncate max-w-40" title={(run.params as any)?.symbol}>{(run.params as any)?.symbol}</p>
+                            <p className="text-sm font-medium text-slate-200 truncate max-w-40" title={run.params?.symbol}>{run.params?.symbol}</p>
                             <p className="text-xs text-slate-400">{new Date(run.started_at).toLocaleString()}</p>
                         </div>
                         <div className="text-right flex-shrink-0 ml-2">

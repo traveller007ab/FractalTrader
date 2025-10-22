@@ -20,7 +20,6 @@ export interface FileWithStatus {
   error?: string;
 }
 
-// Fix: Renamed 'parsedData' to 'data' to match the expected property name in the Optimizer class.
 export interface OptimizationData {
     file: File;
     data: TimeSeriesData[];
@@ -36,6 +35,7 @@ function App() {
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [strategySettings, setStrategySettings] = useState<StrategySettings>(strategyConfig.base);
     const [engineLogs, setEngineLogs] = useState<string[]>([]);
+    const [optimizedSettings, setOptimizedSettings] = useState<StrategySettings | null>(null);
     
     const [files, setFiles] = useState<FileWithStatus[]>([]);
     const [isBacktesting, setIsBacktesting] = useState(false);
@@ -75,15 +75,14 @@ function App() {
             
             if (backtestsRes.error) throw backtestsRes.error;
             setRecentBacktests(backtestsRes.data || []);
-
-            // Fix: Explicitly check for profileRes.data to satisfy TypeScript's null-safety checks.
+            
             if (profileRes.data && profileRes.data.strategy_settings) {
-                // The 'never' type error is resolved by adding the 'profiles' table to the Database interface in types.ts.
                 setStrategySettings(profileRes.data.strategy_settings as StrategySettings);
             }
 
         } catch (error: any) {
-            addToast(`Error fetching initial data: ${error.message}`, 'error');
+            addToast(`Error fetching data. Please check your connection and refresh.`, 'error');
+            console.error("Fetch initial data error:", error);
         } finally {
             setLoading(false);
         }
@@ -161,23 +160,34 @@ function App() {
                  setEngineLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message.substring(15)}`, ...prev.slice(0, 99)]);
             }
         };
+        
+        signalEngine.setOnError((error) => {
+            // Shorten common, verbose errors for better toast display
+            let message = error.message;
+            if (message.includes("Failed to fetch")) {
+                message = "Signal Engine: Network error fetching market data.";
+            } else if (message.includes("rate limit")) {
+                message = "Signal Engine: API rate limit reached.";
+            }
+            addToast(message, 'error');
+        });
+        
         signalEngine.updateSettings(strategySettings);
         signalEngine.start();
         return () => {
             signalEngine.stop();
             console.log = originalConsoleLog;
         };
-    }, [strategySettings]);
+    }, [strategySettings, addToast]);
 
     const handleCopyTrade = async (signal: Signal) => {
         if (!user) return;
         try {
-            // Fix: This error is resolved by adding the 'profiles' table to the Database interface in types.ts, which corrects the Supabase client's type inference.
             const { error } = await supabase.from('copied_trades').insert({
                 signal_id: signal.signal_id,
                 user_id: user.id,
                 executed_at: new Date().toISOString(),
-                entry_price: signal.entry,
+                entry_price: signal.entry_price,
                 status: 'open'
             });
             if (error) throw error;
@@ -190,15 +200,19 @@ function App() {
     const handleSettingsUpdate = async (newSettings: StrategySettings) => {
         setStrategySettings(newSettings);
         signalEngine.updateSettings(newSettings);
-        addToast('Live engine settings updated.', 'info');
+        addToast('Strategy settings saved and applied to live engine.', 'success');
         
+        // Clear any pending optimization results after saving
+        if (optimizedSettings) {
+            setOptimizedSettings(null);
+        }
+
         if (!user) return;
         try {
-            // Fix: This error is resolved by adding the 'profiles' table to the Database interface in types.ts, which corrects the Supabase client's type inference.
             const { error } = await supabase.from('profiles').upsert({ id: user.id, strategy_settings: newSettings });
             if (error) throw error;
         } catch(error: any) {
-            addToast(`Failed to save settings: ${error.message}`, 'error');
+            addToast(`Failed to save settings to profile: ${error.message}`, 'error');
         }
     };
 
@@ -207,24 +221,23 @@ function App() {
         setActiveBacktest(null);
     };
 
-    const handleBacktestComplete = async (file: File, parsedData: TimeSeriesData[]): Promise<void> => {
+    const handleBacktestComplete = async (file: File, parsedData: TimeSeriesData[], settingsToUse: StrategySettings): Promise<void> => {
         if (!user) return;
         const startTime = new Date();
         try {
             const symbol = getSymbolFromFilename(file.name);
-            const { metrics } = runBacktestFromData(parsedData, strategySettings, symbol);
+            const { metrics } = runBacktestFromData(parsedData, settingsToUse, symbol);
             const endTime = new Date();
             const newRun: BacktestRun = {
                 id: crypto.randomUUID(),
                 user_id: user.id,
                 strategy: "fractal_shift_rbs_v2",
-                params: { symbol, ...strategySettings },
+                params: { symbol, ...settingsToUse },
                 metrics,
                 started_at: startTime.toISOString(),
                 ended_at: endTime.toISOString(),
             };
             
-            // Fix: This error is resolved by updating the 'backtest_runs' Insert type in types.ts to accept a full BacktestRun object, as the client is generating the UUID.
             const { error } = await supabase.from('backtest_runs').insert(newRun);
             if (error) {
                  if(error.message.includes("violates row-level security policy")) {
@@ -257,6 +270,7 @@ function App() {
     const handleOptimize = async (filesToOptimize: OptimizationData[]) => {
       if (!user || filesToOptimize.length === 0) return;
       setIsOptimizing(true);
+      setOptimizedSettings(null); // Clear previous results
       
       const fileId = filesToOptimize.map(f => `${f.file.name}-${f.file.size}`).sort().join(';');
       const currentCount = optimizationState.fileId === fileId ? optimizationState.count : 0;
@@ -272,18 +286,14 @@ function App() {
       try {
         const optimizer = new Optimizer(filesToOptimize, strategySettings, currentCount);
         const bestSettings = await optimizer.run();
+
         if(bestSettings) {
-            handleSettingsUpdate(bestSettings);
-            addToast(
-                currentCount === 0
-                    ? 'Optimization complete! New settings have been applied.'
-                    : `Refinement complete! Settings updated.`,
-                'success'
-            );
-            // Automatically run a backtest with the new settings for review if it was a single file
+            setOptimizedSettings(bestSettings);
+            addToast('Optimization complete! Review the new settings.', 'success');
+            
+            // Automatically run a "preview" backtest with the new settings if it was a single file
             if (filesToOptimize.length === 1) {
-                // Fix: Use the 'data' property from the updated OptimizationData interface.
-                await handleBacktestComplete(filesToOptimize[0].file, filesToOptimize[0].data);
+                await handleBacktestComplete(filesToOptimize[0].file, filesToOptimize[0].data, bestSettings);
             }
             setOptimizationState({ fileId, count: currentCount + 1 });
         } else {
@@ -341,13 +351,15 @@ function App() {
                             backtestProgress={backtestProgress}
                             setBacktestProgress={setBacktestProgress}
                             stopBacktestRef={stopBacktestRef}
-                            onRunBacktest={handleBacktestComplete}
+                            onRunBacktest={(file, data) => handleBacktestComplete(file, data, strategySettings)}
                             onOptimize={handleOptimize}
                             onSessionStart={handleSessionStart}
                             recentBacktests={recentBacktests}
                             onViewBacktest={setActiveBacktest}
                             optimizationState={optimizationState}
                             onClearFiles={handleClearFiles}
+                            optimizedSettings={optimizedSettings}
+                            onClearOptimizedSettings={() => setOptimizedSettings(null)}
                         />
                     </div>
                 </div>
