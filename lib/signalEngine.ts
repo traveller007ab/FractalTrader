@@ -1,7 +1,7 @@
 // Fix: Add file extensions to imports to ensure proper module resolution and typing.
 import { supabase } from './supabaseClient.ts';
 import { getTimeSeries } from './twelveDataClient.ts';
-import type { Signal, SignalMetadata, StrategySettings } from '../types.ts';
+import type { Signal, SignalMetadata, StrategySettings, TimeSeriesData } from '../types.ts';
 import { strategyConfig, getSymbolSettings } from './strategyRBSv2Config.ts';
 
 // Technical Analysis helper functions
@@ -45,11 +45,11 @@ const median = (arr: number[]): number => {
 const symbols = Object.keys(strategyConfig.symbolSettings);
 
 class SignalEngine {
-  private intervalId: ReturnType<typeof setInterval> | null = null;
+  private timeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastSignalInfo: Map<string, { timestamp: number; entry_price: number; side: 'buy' | 'sell' }> = new Map();
   private settings: StrategySettings = strategyConfig.base;
-  private currentSymbolIndex = 0;
   private onError: ((error: Error) => void) | null = null;
+  private dailyDataCache: Map<string, { fetchedDate: string; data: TimeSeriesData[] }> = new Map();
 
   public setOnError(callback: (error: Error) => void) {
     this.onError = callback;
@@ -59,23 +59,40 @@ class SignalEngine {
     console.log('[SignalEngine] Base settings updated. Note: Per-symbol settings from config still apply.', newSettings);
     this.settings = newSettings;
   }
+  
+  private async getDailyData(symbol: string): Promise<TimeSeriesData[]> {
+    const today = new Date().toISOString().split('T')[0];
+    const cachedEntry = this.dailyDataCache.get(symbol);
 
-  private async runStrategy() {
-    const symbol = symbols[this.currentSymbolIndex];
-    console.log(`[SignalEngine] Processing symbol ${symbol} (${this.currentSymbolIndex + 1}/${symbols.length})`);
+    if (cachedEntry && cachedEntry.fetchedDate === today) {
+        console.log(`[SignalEngine] Using cached daily data for ${symbol}.`);
+        return cachedEntry.data;
+    }
+
+    console.log(`[SignalEngine] Fetching fresh daily data for ${symbol}.`);
+    const dailyDataRes = await getTimeSeries({ symbol, interval: '1day', outputsize: 55 });
+    const dailyData = dailyDataRes.reverse();
     
-    try {
-      await this.processSymbol(symbol);
-    } catch (error: any) {
-      const errorMessage = `[SignalEngine] Error processing symbol ${symbol}: ${error.message}`;
-      console.error(errorMessage, error);
-      if (this.onError) {
-          this.onError(new Error(errorMessage));
+    if (dailyData.length > 0) {
+      this.dailyDataCache.set(symbol, { fetchedDate: today, data: dailyData });
+    }
+    return dailyData;
+  }
+  
+  private async runStrategyForAllSymbols() {
+    console.log(`[SignalEngine] Starting check for all ${symbols.length} symbols.`);
+    for (const symbol of symbols) {
+       try {
+        await this.processSymbol(symbol);
+      } catch (error: any) {
+        const errorMessage = `[SignalEngine] Error processing symbol ${symbol}: ${error.message}`;
+        console.error(errorMessage, error);
+        if (this.onError) {
+            this.onError(new Error(errorMessage));
+        }
       }
     }
-    
-    // Move to the next symbol for the next interval run
-    this.currentSymbolIndex = (this.currentSymbolIndex + 1) % symbols.length;
+    console.log('[SignalEngine] All symbols checked.');
   }
   
   private async processSymbol(symbol: string) {
@@ -89,12 +106,11 @@ class SignalEngine {
     } = symbolSettings;
     
     // 1. Fetch Data
-    const [dailyDataRes, fifteenMinDataRes] = await Promise.all([
-      getTimeSeries({ symbol, interval: '1day', outputsize: 55 }), // For PDH/PDL and ATR median
+    const [dailyData, fifteenMinDataRes] = await Promise.all([
+      this.getDailyData(symbol),
       getTimeSeries({ symbol, interval: '15min', outputsize: 100 }) // For execution logic
     ]);
     
-    const dailyData = dailyDataRes.reverse();
     const fifteenMinData = fifteenMinDataRes.reverse();
     
     if (fifteenMinData.length < 50 || dailyData.length < 51) {
@@ -238,22 +254,47 @@ class SignalEngine {
         this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), entry_price: entryPrice, side: shift });
     }
   }
+  
+  private scheduleNextRun() {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+    }
+    
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    const minutesToNextQuarter = 15 - (minutes % 15);
+    // Add 15 seconds buffer to ensure candle is closed and data is available from API
+    const msToNextRun = (minutesToNextQuarter * 60 - seconds) * 1000 + 15000;
+    
+    console.log(`[SignalEngine] Scheduling next run in ${(msToNextRun / 1000 / 60).toFixed(2)} minutes.`);
 
-  start(intervalMs = 60000) { // Check every minute
-    if (this.intervalId) {
+    this.timeoutId = setTimeout(async () => {
+      await this.runStrategyForAllSymbols();
+      this.scheduleNextRun(); // Reschedule for the next quarter
+    }, msToNextRun);
+  }
+
+  start() {
+    if (this.timeoutId) {
       console.log('[SignalEngine] Engine already running.');
       return;
     }
     console.log('[SignalEngine] Starting real-time strategy engine (RBS v2)...');
-    this.runStrategy(); // Run immediately
-    this.intervalId = setInterval(() => this.runStrategy(), intervalMs);
+    
+    // Run once immediately, then schedule subsequent runs.
+    (async () => {
+      await this.runStrategyForAllSymbols();
+      this.scheduleNextRun();
+    })();
   }
 
   stop() {
-    if (this.intervalId) {
+    if (this.timeoutId) {
       console.log('[SignalEngine] Stopping engine...');
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
   }
 }

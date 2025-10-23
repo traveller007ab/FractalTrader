@@ -6,12 +6,8 @@ import { DocumentPlusIcon, FolderOpenIcon, PlayIcon, CogIcon, StopIcon, XMarkIco
 import { Tooltip } from './Tooltip';
 import { RecentRunsList } from './RecentRunsList.tsx';
 
-// Fix: Add module declaration to extend React's HTML attributes for the non-standard 'webkitdirectory' property.
-declare module 'react' {
-    interface InputHTMLAttributes<T> {
-        webkitdirectory?: string;
-    }
-}
+// Fix: The module augmentation was causing build errors and has been removed.
+// The `webkitdirectory` attribute will be handled via spread props to avoid type errors.
 
 interface BacktestCenterProps {
     files: FileWithStatus[];
@@ -189,7 +185,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                 <h3 className="text-md font-semibold text-text-primary mb-3">Upload Data</h3>
                 <div className="grid grid-cols-2 gap-2">
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple className="hidden" accept=".csv,.CSV" />
-                    <input type="file" ref={folderInputRef} onChange={handleFileChange} multiple webkitdirectory="" className="hidden" />
+                    <input type="file" ref={folderInputRef} onChange={handleFileChange} multiple {...{ webkitdirectory: "" }} className="hidden" />
 
                     <button onClick={() => fileInputRef.current?.click()} disabled={parsing || isBacktesting || isOptimizing} className="w-full inline-flex justify-center items-center px-3 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border transition-colors disabled:opacity-50">
                         <DocumentPlusIcon className="w-5 h-5 mr-2" />

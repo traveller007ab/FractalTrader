@@ -1,6 +1,8 @@
 // A client for fetching market data from the Twelve Data API.
 
 const API_KEY = 'aeb4fab6e1f34b2ea972fee5f909bb9e';
+// Use a CORS proxy to bypass potential browser-side request blocking.
+const PROXY_URL = 'https://corsproxy.io/?';
 const BASE_URL = 'https://api.twelvedata.com';
 
 interface TimeSeriesParams {
@@ -31,8 +33,10 @@ export async function getTimeSeries(params: TimeSeriesParams): Promise<TimeSerie
     url.searchParams.append('outputsize', (params.outputsize || 30).toString());
     url.searchParams.append('format', 'JSON');
     
+    const proxiedUrl = `${PROXY_URL}${url.toString()}`;
+    
     try {
-        const response = await fetch(url.toString());
+        const response = await fetch(proxiedUrl);
         if (!response.ok) {
             const errorData = await response.json();
             let errorMessage = `Twelve Data API error (${response.status}): ${errorData.message || 'Unknown error'}`;

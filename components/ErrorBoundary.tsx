@@ -10,10 +10,16 @@ interface State {
   errorInfo?: ErrorInfo;
 }
 
+// Fix: Refactored to use a constructor for state initialization. The class property syntax can sometimes cause issues with `this` context if the build setup is not correctly configured, leading to errors where `this.props` and `this.setState` are not found.
 export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-  };
+  public state: State;
+
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+    };
+  }
 
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
