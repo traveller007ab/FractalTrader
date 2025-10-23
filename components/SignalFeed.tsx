@@ -74,7 +74,7 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
   };
 
   return (
-    <div className="bg-bg-secondary rounded-lg shadow-lg overflow-hidden border border-border">
+    <div className="bg-bg-secondary rounded-lg shadow-lg overflow-hidden border border-border shadow-[0_0_25px_-5px_hsl(var(--color-accent)/0.15)] transition-shadow hover:shadow-[0_0_30px_-5px_hsl(var(--color-accent)/0.25)]">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center">
           <SignalIcon className="w-6 h-6 mr-3 text-accent" />

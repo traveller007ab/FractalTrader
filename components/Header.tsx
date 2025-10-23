@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
   return (
-    <header className="bg-bg-secondary sticky top-0 z-40 border-b border-border">
+    <header className="bg-bg-secondary sticky top-0 z-40 border-b border-border shadow-[0_4px_15px_-5px_hsl(var(--color-accent)/0.2)]">
       <div className="container mx-auto px-4 sm:px-6 lg:p-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center group">

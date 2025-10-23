@@ -42,17 +42,27 @@ const median = (arr: number[]): number => {
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-const symbols = Object.keys(strategyConfig.symbolSettings);
+const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD'];
 
 class SignalEngine {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
-  private lastSignalInfo: Map<string, { timestamp: number; entry_price: number; side: 'buy' | 'sell' }> = new Map();
+  private lastSignalInfo: Map<string, { timestamp: number; price: number; side: 'buy' | 'sell' }> = new Map();
   private settings: StrategySettings = strategyConfig.base;
   private onError: ((error: Error) => void) | null = null;
   private dailyDataCache: Map<string, { fetchedDate: string; data: TimeSeriesData[] }> = new Map();
+  private userId: string | null = null;
 
   public setOnError(callback: (error: Error) => void) {
     this.onError = callback;
+  }
+  
+  public updateUser(userId: string | null) {
+      this.userId = userId;
+      if (userId) {
+          console.log('[SignalEngine] User context updated.');
+      } else {
+          console.log('[SignalEngine] User context cleared.');
+      }
   }
 
   public updateSettings(newSettings: StrategySettings) {
@@ -106,25 +116,25 @@ class SignalEngine {
     } = symbolSettings;
     
     // 1. Fetch Data
-    const [dailyData, fifteenMinDataRes] = await Promise.all([
+    const [dailyData, intervalDataRes] = await Promise.all([
       this.getDailyData(symbol),
-      getTimeSeries({ symbol, interval: '15min', outputsize: 100 }) // For execution logic
+      getTimeSeries({ symbol, interval: '15min', outputsize: 100 }) // Analysis is on the 15min timeframe
     ]);
     
-    const fifteenMinData = fifteenMinDataRes.reverse();
+    const intervalData = intervalDataRes.reverse();
     
-    if (fifteenMinData.length < 50 || dailyData.length < 51) {
-        console.warn(`[SignalEngine] Insufficient data for ${symbol}. Needed 50 (15min) and 51 (daily), got ${fifteenMinData.length} and ${dailyData.length}.`);
+    if (intervalData.length < 50 || dailyData.length < 51) {
+        console.warn(`[SignalEngine] Insufficient data for ${symbol}. Needed 50 (15min) and 51 (daily), got ${intervalData.length} and ${dailyData.length}.`);
         return;
     }
     
-    const latestBar = fifteenMinData[fifteenMinData.length - 1];
+    const latestBar = intervalData[intervalData.length - 1];
     const metadata: Partial<SignalMetadata> = {};
 
     // --- Rule 1: Detection - Fractal & Shift Logic ---
     let lastPivotHigh = null, lastPivotLow = null;
-    for (let i = fifteenMinData.length - 3; i >= 2; i--) {
-        const p2 = fifteenMinData[i-2], p1 = fifteenMinData[i-1], center = fifteenMinData[i], n1 = fifteenMinData[i+1], n2 = fifteenMinData[i+2];
+    for (let i = intervalData.length - 3; i >= 2; i--) {
+        const p2 = intervalData[i-2], p1 = intervalData[i-1], center = intervalData[i], n1 = intervalData[i+1], n2 = intervalData[i+2];
         if (center.high > p1.high && center.high > p2.high && center.high >= n1.high && center.high >= n2.high) {
             if (!lastPivotHigh) lastPivotHigh = { price: center.high, index: i };
         }
@@ -136,7 +146,7 @@ class SignalEngine {
 
     if (!lastPivotHigh || !lastPivotLow) return;
 
-    const latestAtr = calculateATR(fifteenMinData, atrPeriod).pop();
+    const latestAtr = calculateATR(intervalData, atrPeriod).pop();
     if(!latestAtr) return;
     metadata.atr = latestAtr;
 
@@ -151,7 +161,7 @@ class SignalEngine {
     if (!shift) return;
 
     // --- Rule 2: Trend Confirmation ---
-    const smas = calculateSMA(fifteenMinData, smaPeriod);
+    const smas = calculateSMA(intervalData, smaPeriod);
     if(smas.length < 4) return;
     const smaSlope = smas[smas.length - 1] - smas[smas.length - 4];
     const trend = smaSlope > 0 ? 'bull' : 'bear';
@@ -180,7 +190,7 @@ class SignalEngine {
     }
 
     // --- Rule 4: Volatility & Volume ---
-    const atrs = calculateATR(fifteenMinData, atrPeriod).slice(-50);
+    const atrs = calculateATR(intervalData, atrPeriod).slice(-50);
     const medianAtr = median(atrs);
     if (latestAtr < medianAtr * atrFilterMultiplier) {
         metadata.volatility_filter = 'fail_low_volatility';
@@ -188,7 +198,7 @@ class SignalEngine {
         return;
     }
     metadata.volatility_filter = 'pass';
-    const volume50 = fifteenMinData.slice(-50).map(d => d.volume);
+    const volume50 = intervalData.slice(-50).map(d => d.volume);
     const medianVolume = median(volume50);
     metadata.volume_spike = latestBar.volume >= medianVolume * volumeFilterMultiplier;
 
@@ -216,13 +226,14 @@ class SignalEngine {
         console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Cooldown period active.`);
         return;
     }
-    if (lastSignal && Math.abs(entryPrice - lastSignal.entry_price) / lastSignal.entry_price < duplicateThresholdPct) {
+    if (lastSignal && Math.abs(entryPrice - lastSignal.price) / lastSignal.price < duplicateThresholdPct) {
         console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Duplicate entry price.`);
         return;
     }
 
     // --- Rule 5: Risk Management ---
     const stopDistance = latestAtr * stopLossAtrMultiplier;
+    // Fix: Corrected a typo in the stop_loss calculation where the variable was being referenced during its own declaration. The sell-side calculation should add `stopDistance` to the `entryPrice`, not `stop_loss`.
     const stop_loss = shift === 'buy' ? entryPrice - stopDistance : entryPrice + stopDistance;
     const take_profit = shift === 'buy' ? entryPrice + (stopDistance * takeProfitR_R) : entryPrice - (stopDistance * takeProfitR_R);
     
@@ -230,14 +241,20 @@ class SignalEngine {
     const riskUsd = accountEquity * (riskPercent / 100);
     metadata.risk_usd = riskUsd;
     const size = riskUsd / stopDistance;
+
+    if (!this.userId) {
+        console.log(`[SignalEngine] ${symbol} signal not generated: User is not authenticated.`);
+        return;
+    }
     
     // --- Rule 8: Output Schema ---
     const newSignal: Omit<Signal, 'signal_id' | 'timestamp'> = {
+      user_id: this.userId,
       strategy: 'fractal_shift_rbs_v2',
       symbol: symbol,
       exchange: strategyConfig.symbolSettings[symbol as keyof typeof strategyConfig.symbolSettings].exchange as Signal['exchange'],
       side: shift,
-      entry_price: entryPrice,
+      price: entryPrice,
       size,
       stop_loss,
       take_profit,
@@ -250,30 +267,28 @@ class SignalEngine {
     const { error } = await supabase.from('signals').insert(newSignal);
     if (error) {
       console.error('[SignalEngine] Error inserting signal:', error);
+      if (this.onError) {
+        this.onError(error);
+      }
     } else {
-        this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), entry_price: entryPrice, side: shift });
+        this.lastSignalInfo.set(`${symbol}_${shift}`, { timestamp: Date.now(), price: entryPrice, side: shift });
     }
   }
   
   private scheduleNextRun() {
     if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
+        clearTimeout(this.timeoutId);
     }
-    
-    const now = new Date();
-    const minutes = now.getMinutes();
-    const seconds = now.getSeconds();
-    
-    const minutesToNextQuarter = 15 - (minutes % 15);
-    // Add 15 seconds buffer to ensure candle is closed and data is available from API
-    const msToNextRun = (minutesToNextQuarter * 60 - seconds) * 1000 + 15000;
-    
-    console.log(`[SignalEngine] Scheduling next run in ${(msToNextRun / 1000 / 60).toFixed(2)} minutes.`);
+
+    const intervalMs = 5 * 60 * 1000; // 5 minutes
+    const nextRunTime = new Date(Date.now() + intervalMs);
+    console.log(`[SignalEngine] Scheduling next check in 5 minutes at ${nextRunTime.toLocaleTimeString()}.`);
+
 
     this.timeoutId = setTimeout(async () => {
-      await this.runStrategyForAllSymbols();
-      this.scheduleNextRun(); // Reschedule for the next quarter
-    }, msToNextRun);
+        await this.runStrategyForAllSymbols();
+        this.scheduleNextRun(); // Reschedule for the next run
+    }, intervalMs);
   }
 
   start() {

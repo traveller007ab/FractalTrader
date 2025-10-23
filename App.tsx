@@ -108,6 +108,7 @@ function App() {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
             setUser(session?.user ?? null);
+            signalEngine.updateUser(session?.user?.id ?? null);
             if (session?.user) {
                 fetchInitialData(session.user);
             } else {
@@ -121,6 +122,7 @@ function App() {
                 const currentUser = session?.user;
                 setSession(session);
                 setUser(currentUser ?? null);
+                signalEngine.updateUser(currentUser?.id ?? null);
                 if (currentUser) {
                     fetchInitialData(currentUser);
                 } else {
@@ -183,6 +185,8 @@ function App() {
                 message = "Signal Engine: Network error fetching market data.";
             } else if (message.includes("rate limit")) {
                 message = "Signal Engine: API rate limit reached.";
+            } else if (message.includes("violates row-level security policy")) {
+                message = "Database security policy blocked a new signal.";
             }
             addToast(message, 'error');
         });
@@ -202,7 +206,7 @@ function App() {
                 signal_id: signal.signal_id,
                 user_id: user.id,
                 executed_at: new Date().toISOString(),
-                entry_price: signal.entry_price,
+                entry_price: signal.price,
                 status: 'open'
             });
             if (error) throw error;

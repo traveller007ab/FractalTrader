@@ -109,3 +109,9 @@ export const InformationCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (p
         <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
 );
+
+export const TelegramIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-1.37.2-1.64l16.12-5.67c.74-.26 1.45.14 1.2 1.1l-2.52 11.68c-.24.93-1 .9-1.46.14l-4.27-3.51-4.23 4.07c-.49.47-1.28.23-1.46-.37z"></path>
+    </svg>
+);

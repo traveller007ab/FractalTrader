@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { StrategySettings as StrategySettingsType } from '../types';
 import { ChevronDownIcon, CheckIcon, InformationCircleIcon, XMarkIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip.tsx';
+import { TelegramIntegration } from './TelegramIntegration.tsx';
 
 interface StrategySettingsProps {
   settings: StrategySettingsType;
@@ -170,6 +171,8 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
                 </div>
             )}
         </div>
+
+        <TelegramIntegration />
     </div>
   );
 };

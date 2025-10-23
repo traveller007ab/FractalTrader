@@ -134,7 +134,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
   };
 
   return (
-    <div className="bg-bg-secondary rounded-lg shadow-lg border border-border">
+    <div className="bg-bg-secondary rounded-lg shadow-lg border border-border shadow-[0_0_25px_-5px_hsl(var(--color-accent)/0.15)] transition-shadow hover:shadow-[0_0_30px_-5px_hsl(var(--color-accent)/0.25)]">
       <div className="p-4 border-b border-border flex items-center justify-between">
          <div className="flex items-center">
             <ChartIcon className="w-6 h-6 mr-3 text-accent" />

@@ -41,7 +41,7 @@ export const Auth: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-bg-secondary border border-border rounded-lg shadow-xl p-8">
+      <div className="max-w-md w-full bg-bg-secondary border border-border rounded-lg p-8 shadow-[0_0_25px_-5px_hsl(var(--color-accent)/0.15)] transition-shadow hover:shadow-[0_0_30px_-5px_hsl(var(--color-accent)/0.25)]">
         <div className="text-center">
             <div className="flex justify-center mb-6">
                 <LogoIcon className="h-12 w-12 text-accent" />

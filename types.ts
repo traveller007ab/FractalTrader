@@ -11,12 +11,13 @@ export interface SignalMetadata {
 
 export interface Signal {
   signal_id: string;
+  user_id: string;
   strategy: string;
   symbol: string;
   exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA';
   side: 'buy' | 'sell';
   size: number;
-  entry_price: number;
+  price: number;
   stop_loss: number;
   take_profit: number;
   confidence: number;
@@ -33,6 +34,12 @@ export interface CopiedTrade {
   exit_price?: number;
   pnl?: number | null; // PNL can be null for open trades
   status: 'open' | 'closed';
+}
+
+// Fix: Moved PnlDataPoint interface before BacktestMetrics as it is a dependency.
+export interface PnlDataPoint {
+  date: string;
+  pnl: number;
 }
 
 export interface BacktestMetrics {
@@ -62,11 +69,6 @@ export interface PerformanceMetrics {
   max_drawdown: number;
   avg_return: number;
   latency_ms: number;
-}
-
-export interface PnlDataPoint {
-  date: string;
-  pnl: number;
 }
 
 export interface TimeSeriesData {
@@ -111,7 +113,8 @@ export type Database = {
           // Fix: Using a specific type for the JSONB column instead of `any` to aid type inference.
           metrics: BacktestMetrics | null
           // Fix: Using a specific type for the JSONB column instead of `any`.
-          params: Record<string, any>
+          // Fix: Reverted to `any` to resolve Supabase client type inference errors.
+          params: any
           started_at: string
           strategy: string
           user_id: string
@@ -122,7 +125,8 @@ export type Database = {
           // Fix: Using a specific type for the JSONB column instead of `any`.
           metrics?: BacktestMetrics | null
           // Fix: Using a specific type for the JSONB column instead of `any`.
-          params: Record<string, any>
+          // Fix: Reverted to `any` to resolve Supabase client type inference errors.
+          params: any
           started_at: string
           strategy: string
           user_id: string
@@ -133,11 +137,14 @@ export type Database = {
           // Fix: Using a specific type for the JSONB column instead of `any`.
           metrics?: BacktestMetrics | null
           // Fix: Using a specific type for the JSONB column instead of `any`.
-          params?: Record<string, any>
+          // Fix: Reverted to `any` to resolve Supabase client type inference errors.
+          params?: any
           started_at?: string
           strategy?: string
           user_id?: string
         }
+        // Fix: Add missing Relationships property to satisfy Supabase type requirements.
+        Relationships: []
       },
       copied_trades: {
         Row: {
@@ -173,6 +180,8 @@ export type Database = {
           status?: "open" | "closed"
           user_id?: string
         }
+        // Fix: Add missing Relationships property to satisfy Supabase type requirements.
+        Relationships: []
       },
       profiles: {
         Row: {
@@ -190,11 +199,13 @@ export type Database = {
           // Fix: Using a specific type for the JSONB column instead of `any`.
           strategy_settings?: StrategySettings | null
         }
+        // Fix: Add missing Relationships property to satisfy Supabase type requirements.
+        Relationships: []
       },
       signals: {
         Row: {
           confidence: number
-          entry_price: number
+          price: number
           // Fix: Using a specific string literal type for `exchange` to match the application logic.
           exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA'
           // Fix: Using a specific type for the JSONB column instead of `any`.
@@ -208,10 +219,11 @@ export type Database = {
           symbol: string
           take_profit: number
           timestamp: string
+          user_id: string
         }
         Insert: {
           confidence: number
-          entry_price: number
+          price: number
           // Fix: Using a specific string literal type for `exchange` to match the application logic.
           exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA'
           // Fix: Using a specific type for the JSONB column instead of `any`.
@@ -225,10 +237,11 @@ export type Database = {
           symbol: string
           take_profit: number
           timestamp?: string
+          user_id: string
         }
         Update: {
           confidence?: number
-          entry_price?: number
+          price?: number
           // Fix: Using a specific string literal type for `exchange` to match the application logic.
           exchange?: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA'
           // Fix: Using a specific type for the JSONB column instead of `any`.
@@ -242,7 +255,10 @@ export type Database = {
           symbol?: string
           take_profit?: number
           timestamp?: string
+          user_id?: string
         }
+        // Fix: Add missing Relationships property to satisfy Supabase type requirements.
+        Relationships: []
       }
     }
     Views: {
