@@ -37,16 +37,29 @@ export async function getTimeSeries(params: TimeSeriesParams): Promise<TimeSerie
     
     try {
         const response = await fetch(proxiedUrl);
+        // We read the response as text first to handle non-JSON error pages gracefully
+        const responseText = await response.text();
+        let data;
+
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            // Handle HTML error pages from proxy or API
+            if (responseText.toLowerCase().includes('<!doctype html')) {
+                throw new Error(`API returned an HTML error page instead of JSON. This can be caused by rate-limiting or server issues.`);
+            }
+            // Handle other non-JSON text
+            throw new Error(`Failed to parse API response. Response was not valid JSON.`);
+        }
+
         if (!response.ok) {
-            const errorData = await response.json();
-            let errorMessage = `Twelve Data API error (${response.status}): ${errorData.message || 'Unknown error'}`;
-            if (response.status === 429) { // Too Many Requests
-                errorMessage = `RATE_LIMIT_EXCEEDED: ${errorData.message}`;
+            let errorMessage = `Twelve Data API error (${response.status}): ${data.message || 'Unknown error'}`;
+            // The API sometimes returns rate limit info in the message even on non-429 status codes
+            if (response.status === 429 || (data.message && (data.message.includes('API credits') || data.message.includes('rate limit')))) {
+                errorMessage = `RATE_LIMIT_EXCEEDED: ${data.message}`;
             }
             throw new Error(errorMessage);
         }
-        
-        const data = await response.json();
         
         if (data.status === 'error') {
              throw new Error(`Twelve Data API error: ${data.message}`);

@@ -13,7 +13,13 @@
     "react-dom": "^19.2.0",
     "recharts": "^3.3.0",
     "@supabase/supabase-js": "^2.45.0",
-    "papaparse": "^5.5.3"
+    "papaparse": "^5.5.3",
+    "socket.io-client": "^4.7.5",
+    "dotenv": "^17.2.3",
+    "http": "^0.0.1-security",
+    "cors": "^2.8.5",
+    "socket.io": "^4.8.1",
+    "express": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

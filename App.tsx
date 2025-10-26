@@ -108,7 +108,6 @@ function App() {
             const { data: { session } } = await supabase.auth.getSession();
             setSession(session);
             setUser(session?.user ?? null);
-            signalEngine.updateUser(session?.user?.id ?? null);
             if (session?.user) {
                 fetchInitialData(session.user);
             } else {
@@ -122,7 +121,6 @@ function App() {
                 const currentUser = session?.user;
                 setSession(session);
                 setUser(currentUser ?? null);
-                signalEngine.updateUser(currentUser?.id ?? null);
                 if (currentUser) {
                     fetchInitialData(currentUser);
                 } else {
@@ -385,6 +383,8 @@ function App() {
                             onClearFiles={handleClearFiles}
                             optimizedSettings={optimizedSettings}
                             onClearOptimizedSettings={() => setOptimizedSettings(null)}
+                            signals={signals}
+                            addToast={addToast}
                         />
                     </div>
                 </div>

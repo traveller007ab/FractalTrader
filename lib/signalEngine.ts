@@ -50,21 +50,11 @@ class SignalEngine {
   private settings: StrategySettings = strategyConfig.base;
   private onError: ((error: Error) => void) | null = null;
   private dailyDataCache: Map<string, { fetchedDate: string; data: TimeSeriesData[] }> = new Map();
-  private userId: string | null = null;
 
   public setOnError(callback: (error: Error) => void) {
     this.onError = callback;
   }
   
-  public updateUser(userId: string | null) {
-      this.userId = userId;
-      if (userId) {
-          console.log('[SignalEngine] User context updated.');
-      } else {
-          console.log('[SignalEngine] User context cleared.');
-      }
-  }
-
   public updateSettings(newSettings: StrategySettings) {
     console.log('[SignalEngine] Base settings updated. Note: Per-symbol settings from config still apply.', newSettings);
     this.settings = newSettings;
@@ -101,6 +91,8 @@ class SignalEngine {
             this.onError(new Error(errorMessage));
         }
       }
+      // Add a delay to avoid hitting API rate limits. 20 seconds is a safe buffer.
+      await new Promise(resolve => setTimeout(resolve, 20000));
     }
     console.log('[SignalEngine] All symbols checked.');
   }
@@ -242,14 +234,8 @@ class SignalEngine {
     metadata.risk_usd = riskUsd;
     const size = riskUsd / stopDistance;
 
-    if (!this.userId) {
-        console.log(`[SignalEngine] ${symbol} signal not generated: User is not authenticated.`);
-        return;
-    }
-    
     // --- Rule 8: Output Schema ---
     const newSignal: Omit<Signal, 'signal_id' | 'timestamp'> = {
-      user_id: this.userId,
       strategy: 'fractal_shift_rbs_v2',
       symbol: symbol,
       exchange: strategyConfig.symbolSettings[symbol as keyof typeof strategyConfig.symbolSettings].exchange as Signal['exchange'],
@@ -280,9 +266,9 @@ class SignalEngine {
         clearTimeout(this.timeoutId);
     }
 
-    const intervalMs = 5 * 60 * 1000; // 5 minutes
+    const intervalMs = 15 * 60 * 1000; // 15 minutes
     const nextRunTime = new Date(Date.now() + intervalMs);
-    console.log(`[SignalEngine] Scheduling next check in 5 minutes at ${nextRunTime.toLocaleTimeString()}.`);
+    console.log(`[SignalEngine] Scheduling next check in 15 minutes at ${nextRunTime.toLocaleTimeString()}.`);
 
 
     this.timeoutId = setTimeout(async () => {

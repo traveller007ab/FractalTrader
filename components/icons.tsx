@@ -115,3 +115,10 @@ export const TelegramIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
         <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-1.37.2-1.64l16.12-5.67c.74-.26 1.45.14 1.2 1.1l-2.52 11.68c-.24.93-1 .9-1.46.14l-4.27-3.51-4.23 4.07c-.49.47-1.28.23-1.46-.37z"></path>
     </svg>
 );
+
+export const RobotIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 00-1.06-1.06L15 8.94M18 12h3M18.75 12A6.75 6.75 0 114.5 12a6.75 6.75 0 0114.25 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+    </svg>
+);

@@ -11,7 +11,6 @@ export interface SignalMetadata {
 
 export interface Signal {
   signal_id: string;
-  user_id: string;
   strategy: string;
   symbol: string;
   exchange: 'BINANCE' | 'ALPACA' | 'POLYGON' | 'OANDA';
@@ -99,6 +98,17 @@ export interface ToastMessage {
   id: number;
   message: string;
   type: 'success' | 'error' | 'info';
+}
+
+export interface LivePosition {
+    id: string;
+    symbol: string;
+    side: 'buy' | 'sell';
+    volume: number;
+    stopLoss: number;
+    takeProfit: number;
+    pnl: number;
+    status: 'open' | 'closed';
 }
 
 
@@ -219,7 +229,6 @@ export type Database = {
           symbol: string
           take_profit: number
           timestamp: string
-          user_id: string
         }
         Insert: {
           confidence: number
@@ -237,7 +246,6 @@ export type Database = {
           symbol: string
           take_profit: number
           timestamp?: string
-          user_id: string
         }
         Update: {
           confidence?: number
@@ -255,7 +263,6 @@ export type Database = {
           symbol?: string
           take_profit?: number
           timestamp?: string
-          user_id?: string
         }
         // Fix: Add missing Relationships property to satisfy Supabase type requirements.
         Relationships: []

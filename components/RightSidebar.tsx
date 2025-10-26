@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { StrategySettings } from './StrategySettings.tsx';
 import { BacktestCenter } from './BacktestCenter.tsx';
-import { BeakerIcon, ListBulletIcon } from './icons.tsx';
-import type { StrategySettings as StrategySettingsType, BacktestRun } from '../types';
+import { BeakerIcon, ListBulletIcon, RobotIcon } from './icons.tsx';
+import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, ToastMessage } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
+import { TradeExecutionSection } from './TradeExecutionSection.tsx';
 
 interface RightSidebarProps {
     strategySettings: StrategySettingsType;
@@ -27,10 +28,12 @@ interface RightSidebarProps {
     onClearFiles: () => void;
     optimizedSettings: StrategySettingsType | null;
     onClearOptimizedSettings: () => void;
+    signals: Signal[];
+    addToast: (message: string, type?: ToastMessage['type']) => void;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
-    const [activeTab, setActiveTab] = useState<'strategy' | 'backtest'>('strategy');
+    const [activeTab, setActiveTab] = useState<'strategy' | 'backtest' | 'trade'>('strategy');
 
     return (
         <div className="bg-bg-secondary rounded-lg shadow-lg border border-border h-full flex flex-col max-h-[calc(100vh-6rem)]">
@@ -51,10 +54,18 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                     Backtest
                     {activeTab === 'backtest' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
                 </button>
+                 <button
+                    onClick={() => setActiveTab('trade')}
+                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'trade' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                    <RobotIcon className="w-5 h-5" />
+                    Auto Trade
+                    {activeTab === 'trade' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
+                </button>
             </div>
             
             <div className="flex-grow overflow-y-auto">
-                {activeTab === 'strategy' ? (
+                {activeTab === 'strategy' && (
                     <StrategySettings 
                         settings={props.strategySettings}
                         onSettingsUpdate={props.onSettingsUpdate}
@@ -63,8 +74,15 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                         optimizedSettings={props.optimizedSettings}
                         onClearOptimizedSettings={props.onClearOptimizedSettings}
                     />
-                ) : (
+                )}
+                {activeTab === 'backtest' && (
                     <BacktestCenter {...props} />
+                )}
+                 {activeTab === 'trade' && (
+                    <TradeExecutionSection
+                        signals={props.signals}
+                        addToast={props.addToast}
+                    />
                 )}
             </div>
         </div>
