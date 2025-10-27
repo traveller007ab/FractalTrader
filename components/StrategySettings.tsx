@@ -33,7 +33,7 @@ const SettingInput: React.FC<{ label: string, value: number, name: keyof Strateg
                     onChange(name, val)
                 }
             }}
-            className="mt-1 block w-full px-2 py-1.5 bg-bg-primary border border-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent text-sm"
+            className="mt-1 block w-full bg-transparent border-0 border-b-2 border-border px-1 py-1.5 text-text-primary placeholder-text-muted focus:outline-none focus:ring-0 focus:border-accent transition-colors duration-200 text-sm"
         />
     </div>
 );
