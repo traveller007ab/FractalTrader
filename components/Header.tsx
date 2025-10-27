@@ -11,17 +11,17 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
   return (
-    <header className="bg-bg-secondary sticky top-0 z-40 border-b border-border shadow-[0_4px_15px_-5px_hsl(var(--color-accent)/0.2)]">
+    <header className="bg-bg-secondary sticky top-0 z-40 border-b border-border shadow-md shadow-black/20">
       <div className="container mx-auto px-4 sm:px-6 lg:p-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center group">
-            <LogoIcon className="h-8 w-8 text-accent transition-transform duration-200 ease-in-out group-hover:rotate-[-12deg]" />
-            <span className="ml-3 text-xl font-semibold text-text-primary tracking-tight transition-colors group-hover:text-accent">SignalFlow</span>
+            <LogoIcon className="h-8 w-8 text-accent transition-transform duration-300 ease-in-out group-hover:rotate-[-15deg] group-hover:scale-110" />
+            <span className="ml-3 text-xl font-bold font-sans text-text-primary tracking-tight transition-colors group-hover:text-accent">SignalFlow</span>
           </div>
           <div className="flex items-center gap-4">
             {session?.user && (
               <>
-                <span className="text-sm text-text-secondary mr-2 hidden sm:block">{session.user.email}</span>
+                <span className="text-sm font-mono text-text-secondary mr-2 hidden sm:block">{session.user.email}</span>
                 <ThemeToggle />
                 <button
                   onClick={onSignOut}

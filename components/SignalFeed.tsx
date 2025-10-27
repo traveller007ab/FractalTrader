@@ -37,23 +37,23 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
             <table className="min-w-full divide-y divide-border">
                 <thead className="bg-bg-secondary/80 sticky top-0 z-10 backdrop-blur-sm">
                     <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Symbol</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Time</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Side</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Entry Price</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Stop Loss</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Take Profit</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">
+                    <th scope="col" className="pl-4 pr-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Symbol</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Time</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Side</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Entry Price</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Stop Loss</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Take Profit</th>
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">
                         <Tooltip content="The bot's calculated confidence in this signal's success, based on multiple factors like volume and trend alignment.">
                             <span className="cursor-help border-b border-dashed border-text-muted/50">Confidence</span>
                         </Tooltip>
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">
                         <Tooltip content="Win/Loss is based on your copied trades. Active signals are recent. Expired signals are older than 1 hour and may no longer be relevant.">
                             <span className="cursor-help border-b border-dashed border-text-muted/50">Status</span>
                         </Tooltip>
                     </th>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-text-muted uppercase tracking-wider">Action</th>
+                    <th scope="col" className="px-3 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
                 <tbody className="bg-bg-secondary divide-y divide-border">
@@ -74,7 +74,7 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
   };
 
   return (
-    <div className="bg-bg-secondary rounded-lg shadow-lg overflow-hidden border border-border shadow-[0_0_25px_-5px_hsl(var(--color-accent)/0.15)] transition-shadow hover:shadow-[0_0_30px_-5px_hsl(var(--color-accent)/0.25)]">
+    <div className="main-panel overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center">
           <SignalIcon className="w-6 h-6 mr-3 text-accent" />

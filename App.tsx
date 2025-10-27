@@ -12,6 +12,7 @@ import { Optimizer } from './lib/optimizer.ts';
 import { strategyConfig } from './lib/strategyRBSv2Config.ts';
 import { getSymbolFromFilename } from './lib/utils.ts';
 import { usePageFocus } from './hooks/usePageFocus.ts';
+import { soundManager } from './lib/soundManager.ts';
 import type { Session, User } from '@supabase/supabase-js';
 import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData } from './types.ts';
 
@@ -150,6 +151,7 @@ function App() {
                 const newSignal = payload.new as Signal;
                 setSignals(currentSignals => [newSignal, ...currentSignals]);
                 addToast(`New ${newSignal.side.toUpperCase()} signal for ${newSignal.symbol}!`, 'info');
+                soundManager.play('newSignal');
             })
             .subscribe();
         
@@ -214,6 +216,7 @@ function App() {
             });
             if (error) throw error;
             addToast('Trade copied successfully!', 'success');
+            soundManager.play('success');
         } catch (error: any) {
             addToast(`Error copying trade: ${error.message}`, 'error');
         }
@@ -228,6 +231,7 @@ function App() {
         } else {
             addToast('Strategy settings saved and applied to live engine.', 'success');
         }
+        soundManager.play('success');
         
         // Clear any pending optimization results after saving
         if (optimizedSettings) {

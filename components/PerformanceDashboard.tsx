@@ -24,11 +24,11 @@ interface DisplayMetrics {
 }
 
 const StatCardComponent: React.FC<{ title: string; value: number | undefined; formatter: (val: number) => string; tooltip: string }> = ({ title, value, formatter, tooltip }) => (
-  <div className="bg-bg-primary/50 dark:bg-slate-900/50 p-3 rounded-lg border border-border">
+  <div className="bg-bg-primary/50 p-3 rounded-lg stat-card-group">
      <Tooltip content={tooltip}>
         <h3 className="text-xs font-medium text-text-muted truncate cursor-help border-b border-dashed border-transparent hover:border-text-muted/50">{title}</h3>
      </Tooltip>
-    <p className="text-xl font-semibold text-text-primary tracking-tight mt-1">
+    <p className="text-xl font-semibold text-text-primary tracking-tight mt-1 font-mono">
       {value !== undefined && !isNaN(value) ? <AnimatedNumber value={value} formatter={formatter} /> : '-'}
     </p>
   </div>
@@ -134,15 +134,15 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
   };
 
   return (
-    <div className="bg-bg-secondary rounded-lg shadow-lg border border-border shadow-[0_0_25px_-5px_hsl(var(--color-accent)/0.15)] transition-shadow hover:shadow-[0_0_30px_-5px_hsl(var(--color-accent)/0.25)]">
+    <div className="main-panel">
       <div className="p-4 border-b border-border flex items-center justify-between">
          <div className="flex items-center">
             <ChartIcon className="w-6 h-6 mr-3 text-accent" />
             <h2 className="text-lg font-semibold text-text-primary">Performance Analytics</h2>
          </div>
-         <div className="flex items-center bg-bg-primary/50 dark:bg-slate-800/50 rounded-md p-1 border border-border">
-             <button onClick={() => setActiveTab('live')} className={`px-3 py-1 text-sm rounded ${activeTab === 'live' ? 'bg-border dark:bg-slate-700 text-text-primary' : 'text-text-secondary hover:bg-border/50'}`}>Live</button>
-             <button onClick={() => setActiveTab('backtest')} className={`px-3 py-1 text-sm rounded ${activeTab === 'backtest' ? 'bg-border dark:bg-slate-700 text-text-primary' : 'text-text-secondary hover:bg-border/50'}`}>Backtests</button>
+         <div className="flex items-center bg-bg-primary/50 rounded-md p-1 border border-border">
+             <button onClick={() => setActiveTab('live')} className={`px-3 py-1 text-sm rounded transition-colors ${activeTab === 'live' ? 'live-indicator-active' : 'text-text-secondary hover:bg-border/50'}`}>Live</button>
+             <button onClick={() => setActiveTab('backtest')} className={`px-3 py-1 text-sm rounded transition-colors ${activeTab === 'backtest' ? 'bg-border text-text-primary' : 'text-text-secondary hover:bg-border/50'}`}>Backtests</button>
          </div>
       </div>
       <div className="p-4">

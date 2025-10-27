@@ -5,6 +5,7 @@ import { BeakerIcon, ListBulletIcon, RobotIcon } from './icons.tsx';
 import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, ToastMessage } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
 import { TradeExecutionSection } from './TradeExecutionSection.tsx';
+import { soundManager } from '../lib/soundManager.ts';
 
 interface RightSidebarProps {
     strategySettings: StrategySettingsType;
@@ -54,31 +55,35 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
         const isVisible = offset === 0;
 
         return {
-            transform: `translateX(${offset * 100}%) translateX(${offset * 10}px) rotateY(${-offset * 40}deg)`,
+            transform: `translateX(${offset * 100}%)`,
             opacity: isVisible ? 1 : 0,
             pointerEvents: isVisible ? 'auto' : 'none',
             zIndex: isVisible ? 2 : 1,
+            transition: 'transform 0.4s ease-in-out, opacity 0.3s ease-in-out',
         };
+    };
+
+    const handleTabClick = (tabId: TabId) => {
+        soundManager.play('click');
+        setActiveTab(tabId);
     };
 
 
     return (
-        <div className="bg-bg-secondary/80 backdrop-blur-md border border-white/10 rounded-lg shadow-lg h-full flex flex-col max-h-[calc(100vh-6rem)]">
-            <div className="flex border-b border-white/10 flex-shrink-0 relative">
+        <div className="main-panel h-full flex flex-col max-h-[calc(100vh-6rem)]">
+            <div className="flex border-b border-border flex-shrink-0 relative">
                 {tabs.map((tab, index) => (
                      <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 relative ${activeTab === tab.id ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                        onClick={() => handleTabClick(tab.id)}
+                        className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 relative ${activeTab === tab.id ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
                     >
-                        <div className={`transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : 'scale-100'}`}>
-                            <tab.icon className="w-5 h-5" />
-                        </div>
-                        <span className={`transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : 'scale-100'}`}>{tab.label}</span>
+                        <tab.icon className="w-5 h-5" />
+                        <span>{tab.label}</span>
                     </button>
                 ))}
                 <div
-                    className="absolute bottom-0 h-0.5 bg-accent transition-all duration-500 ease-in-out"
+                    className="absolute bottom-0 h-0.5 bg-accent transition-all duration-300 ease-in-out"
                     style={{
                         left: `${tabIndices[activeTab] * (100 / tabs.length)}%`,
                         width: `${100 / tabs.length}%`,
@@ -86,10 +91,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                 ></div>
             </div>
             
-             <div className="flex-grow overflow-hidden relative" style={{ perspective: '1200px' }}>
+             <div className="flex-grow overflow-hidden relative">
                 <div
                     style={getPanelStyle(0)}
-                    className="absolute w-full h-full transition-all duration-500 ease-in-out"
+                    className="absolute w-full h-full"
                 >
                     <div className="w-full h-full overflow-y-auto">
                         <StrategySettings 
@@ -104,7 +109,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                 </div>
                 <div
                     style={getPanelStyle(1)}
-                    className="absolute w-full h-full transition-all duration-500 ease-in-out"
+                    className="absolute w-full h-full"
                 >
                     <div className="w-full h-full overflow-y-auto">
                          <BacktestCenter {...props} />
@@ -112,7 +117,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                 </div>
                 <div
                     style={getPanelStyle(2)}
-                    className="absolute w-full h-full transition-all duration-500 ease-in-out"
+                    className="absolute w-full h-full"
                 >
                     <div className="w-full h-full overflow-y-auto">
                         <TradeExecutionSection

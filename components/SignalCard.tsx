@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
 import { CopyIcon } from './icons.tsx';
@@ -12,25 +12,55 @@ interface SignalCardProps {
   isNew: boolean;
 }
 
-const getStatus = (signal: Signal, copiedTrade?: CopiedTrade): { text: string; color: string; bg: string } => {
+const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
+  const copiedTrade = useMemo(() => copiedTrades.find(t => t.signal_id === signal.signal_id && t.user_id === user.id), [copiedTrades, signal.signal_id, user.id]);
+
+  const [isExpired, setIsExpired] = useState(() => {
+    // A signal is only considered expired for styling if it hasn't been copied and is over an hour old.
+    return !copiedTrade && (Date.now() - new Date(signal.timestamp).getTime()) > 3600000;
+  });
+
+  useEffect(() => {
+    if (copiedTrade) {
+      // If a trade is copied, it can't be considered expired for styling purposes.
+      setIsExpired(false);
+      return;
+    }
+    
+    const signalTime = new Date(signal.timestamp).getTime();
+    const expiryTime = signalTime + 3600000; // 1 hour in ms
+    const timeUntilExpiry = expiryTime - Date.now();
+
+    if (timeUntilExpiry > 0) {
+      // The signal is still active, set a timer to update its state when it expires.
+      setIsExpired(false); // Ensure it's not expired initially
+      const timer = setTimeout(() => {
+        setIsExpired(true);
+      }, timeUntilExpiry);
+      
+      // Cleanup the timer if the component unmounts or props change.
+      return () => clearTimeout(timer);
+    } else {
+      // The signal was already expired on mount.
+      setIsExpired(true);
+    }
+  }, [signal.timestamp, copiedTrade]); // Rerun effect if the signal or copied status changes.
+  
+  const getStatus = (): { text: string; color: string; bg: string } => {
     if (copiedTrade) {
         if (copiedTrade.status === 'closed') {
             return (copiedTrade.pnl ?? 0) >= 0 
-                ? { text: 'Win', color: 'text-emerald-500', bg: 'bg-emerald-500/20' }
-                : { text: 'Loss', color: 'text-red-500', bg: 'bg-red-500/20' };
+                ? { text: 'Win', color: 'text-success', bg: 'bg-success/20' }
+                : { text: 'Loss', color: 'text-danger', bg: 'bg-danger/20' };
         }
-        return { text: 'Copied', color: 'text-sky-500', bg: 'bg-sky-500/20' };
+        return { text: 'Copied', color: 'text-accent', bg: 'bg-accent/20' };
     }
-    const signalAgeHours = (Date.now() - new Date(signal.timestamp).getTime()) / (1000 * 60 * 60);
-    return signalAgeHours > 1 
+    return isExpired
       ? { text: 'Expired', color: 'text-text-muted', bg: 'bg-text-muted/20' }
       : { text: 'Active', color: 'text-amber-500', bg: 'bg-amber-500/20' };
-};
+  };
 
-const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, copiedTrades, user, isNew }) => {
-  const isBuy = signal.side === 'buy';
-  const copiedTrade = copiedTrades.find(t => t.signal_id === signal.signal_id && t.user_id === user.id);
-  const status = getStatus(signal, copiedTrade);
+  const status = getStatus();
 
   const formatPrice = (price: number) => {
       if (typeof price !== 'number' || isNaN(price)) {
@@ -44,27 +74,27 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
         return <span className="text-text-muted">--%</span>;
     }
     const percentage = (confidence * 100).toFixed(1);
-    const color = confidence > 0.75 ? 'text-emerald-500' : confidence > 0.60 ? 'text-amber-500' : 'text-text-muted';
+    const color = confidence > 0.75 ? 'text-success' : confidence > 0.60 ? 'text-amber-500' : 'text-text-muted';
     return <span className={color}>{percentage}%</span>;
   }
   
-  const rowClass = isNew ? 'animate-highlight-fade' : '';
+  const rowClass = isNew ? 'new-signal-row' : isExpired ? 'expired-signal-row' : '';
 
   return (
     <tr className={rowClass}>
-      <td className="px-4 py-3 text-sm font-medium text-text-primary whitespace-nowrap">{signal.symbol}</td>
-      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">{new Date(signal.timestamp).toLocaleTimeString()}</td>
-      <td className={`px-4 py-3 text-sm font-semibold whitespace-nowrap ${isBuy ? 'text-emerald-500' : 'text-red-500'}`}>{signal.side.toUpperCase()}</td>
-      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.price)}</td>
-      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
-      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
-      <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>
-      <td className="px-4 py-3 text-sm whitespace-nowrap">
+      <td className="pl-4 pr-3 py-3 text-sm font-medium text-text-primary whitespace-nowrap">{signal.symbol}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{new Date(signal.timestamp).toLocaleTimeString()}</td>
+      <td className={`px-3 py-3 text-sm font-semibold whitespace-nowrap ${signal.side === 'buy' ? 'text-success' : 'text-danger'}`}>{signal.side.toUpperCase()}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.price)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>
+      <td className="px-3 py-3 text-sm whitespace-nowrap">
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.bg} ${status.color}`}>
             {status.text}
         </span>
       </td>
-      <td className="px-4 py-3 text-center">
+      <td className="px-3 py-3 text-center">
         <Tooltip content={copiedTrade ? "You've already copied this trade" : "Copy this trade to your journal"}>
             <button
             onClick={() => onCopyTrade(signal)}
@@ -79,7 +109,8 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
   );
 };
 
-// Memoize the component to prevent unnecessary re-renders
+// Memoize the component to prevent unnecessary re-renders based on prop changes.
+// The component's internal state now handles time-based updates.
 const areEqual = (prevProps: SignalCardProps, nextProps: SignalCardProps) => {
     if (prevProps.signal.signal_id !== nextProps.signal.signal_id || prevProps.isNew !== nextProps.isNew) {
         return false;

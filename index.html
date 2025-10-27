@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SignalFlow</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script type="importmap">
 {
   "imports": {
@@ -25,33 +28,64 @@
 }
 </script>
 <style>
-  /* Define CSS variables for theming */
+  /* --- Apex Design System --- */
+  /* A professional, powerful, and intelligent theme. */
+
   :root {
-    --color-bg-primary: 240 10% 3.9%;
-    --color-bg-secondary: 240 5.9% 10%;
-    --color-border: 240 3.7% 15.9%;
-    --color-text-primary: 240 5% 95.9%;
-    --color-text-secondary: 240 5.2% 83.9%;
-    --color-text-muted: 240 5% 64.9%;
-    --color-accent: 204 92% 53%; /* sky-500 */
-    --color-accent-hover: 204 92% 60%;
+    --font-sans: 'Inter', sans-serif;
+    --font-mono: 'Roboto Mono', monospace;
+
+    --color-bg-primary: 222 47% 8%; /* Near-black with a hint of blue */
+    --color-bg-secondary: 222 47% 11%;
+    --color-border: 222 47% 15%;
+    --color-text-primary: 210 40% 98%;
+    --color-text-secondary: 210 40% 70%;
+    --color-text-muted: 210 40% 50%;
+    --color-accent: 173 100% 36%; /* Energetic Teal */
+    --color-accent-hover: 173 100% 42%;
+    --color-success: 142 71% 45%; /* Green */
+    --color-danger: 0 84% 60%;  /* Red */
   }
 
+  /* Light theme is defined but dark is the default star of the show. */
   .light {
     --color-bg-primary: 0 0% 100%;
-    --color-bg-secondary: 240 5.9% 95%;
+    --color-bg-secondary: 240 5.9% 97%;
     --color-border: 240 5.9% 90%;
     --color-text-primary: 240 10% 3.9%;
     --color-text-secondary: 240 3.8% 46.1%;
     --color-text-muted: 240 5.9% 60%;
-    --color-accent: 217 91% 60%; /* blue-600 */
-    --color-accent-hover: 217 91% 65%;
+    --color-accent: 173 100% 32%; 
+    --color-accent-hover: 173 100% 38%;
   }
 
-  /* Apply base styles */
   body {
     background-color: hsl(var(--color-bg-primary));
     color: hsl(var(--color-text-secondary));
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* --- Professional Scrollbar --- */
+  ::-webkit-scrollbar {
+      width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+      background: hsl(var(--color-bg-primary) / 0.5);
+  }
+  ::-webkit-scrollbar-thumb {
+      background-color: hsl(var(--color-border));
+      border-radius: 4px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+      background-color: hsl(var(--color-accent));
+  }
+  * {
+      scrollbar-width: thin;
+      scrollbar-color: hsl(var(--color-border)) transparent;
   }
 </style>
 <script>
@@ -62,7 +96,6 @@
         if (theme === 'light') {
           document.documentElement.classList.add('light');
         } else {
-          // Default to dark
           document.documentElement.classList.remove('light');
         }
       } catch (_) {}
@@ -72,6 +105,10 @@
       darkMode: 'class', // Enable class-based dark mode
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Roboto Mono', 'monospace'],
+          },
           colors: {
             'bg-primary': 'hsl(var(--color-bg-primary))',
             'bg-secondary': 'hsl(var(--color-bg-secondary))',
@@ -81,109 +118,38 @@
             'text-muted': 'hsl(var(--color-text-muted))',
             'accent': 'hsl(var(--color-accent))',
             'accent-hover': 'hsl(var(--color-accent-hover))',
-            // Specific colors that don't change with theme
-            'brand-accent': '#38bdf8', // sky-400
-            'dark-bg': '#020617',     // slate-950
-            'container-bg': '#0f172a', // slate-900
-            'border-color': '#1e293b',// slate-800
+            'success': 'hsl(var(--color-success))',
+            'danger': 'hsl(var(--color-danger))',
           },
           animation: {
-            'fade-in-up': 'fade-in-up 0.5s ease-out both',
-            'highlight-fade': 'highlight-fade 2.5s ease-out both',
-            'pop-in': 'pop-in 0.3s ease-out both',
-            'fade-out-down': 'fade-out-down 0.3s ease-in both',
-            'shimmer': 'shimmer 1.5s infinite linear',
-            'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+            'fade-in-up': 'fade-in-up 0.4s ease-out both',
+            'shimmer': 'shimmer 2s infinite linear',
+            'pulse-sharp': 'pulse-sharp 1.5s ease-out infinite',
+            'border-in': 'border-in 0.3s ease-out forwards',
           },
           keyframes: {
             'fade-in-up': {
               '0%': { opacity: '0', transform: 'translateY(1rem)' },
               '100%': { opacity: '1', transform: 'translateY(0)' },
             },
-            'highlight-fade': {
-              '0%': { backgroundColor: 'hsl(var(--color-accent) / 0.2)' },
-              '100%': { backgroundColor: 'transparent' },
-            },
-            'pop-in': {
-                '0%': { transform: 'scale(0.5)', opacity: '0' },
-                '100%': { transform: 'scale(1)', opacity: '1' },
-            },
-            'fade-out-down': {
-              '0%': { opacity: '1', transform: 'translateY(0)' },
-              '100%': { opacity: '0', transform: 'translateY(1rem)' },
-            },
             'shimmer': {
-              '0%': { backgroundPosition: '-1000px 0' },
-              '100%': { backgroundPosition: '1000px 0' },
+              '0%': { background-position: '-1000px 0' },
+              '100%': { background-position: '1000px 0' },
             },
-            'pulse-glow': {
-              '0%, 100%': { boxShadow: '0 0 6px hsl(var(--color-accent) / 0.7), 0 0 2px hsl(var(--color-accent) / 0.6) inset' },
-              '50%': { boxShadow: '0 0 12px hsl(var(--color-accent) / 0.9), 0 0 3px hsl(var(--color-accent) / 0.8) inset' },
+            'pulse-sharp': {
+                '0%, 100%': { opacity: '0.9', boxShadow: '0 0 5px hsl(var(--color-accent))' },
+                '50%': { opacity: '1', boxShadow: '0 0 12px hsl(var(--color-accent))' },
             },
+            'border-in': {
+                '0%': { boxShadow: 'inset 0 0 0 0 hsl(var(--color-accent) / 0.5)' },
+                '100%': { boxShadow: 'inset 0 0 0 2px hsl(var(--color-accent) / 0.5)' },
+            }
           },
         },
       },
     }
   </script>
   <style>
-    /* --- The True Water Drop Scrollbar --- */
-    /* A highly stylized, artistic scrollbar that captures the essence of a liquid droplet. */
-
-    /* For Webkit browsers (Chrome, Safari, Edge) */
-    ::-webkit-scrollbar {
-      width: 14px; /* A bit wider to accommodate the droplet shape */
-      height: 14px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent; /* The invisible "thin line" */
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background-color: hsl(var(--color-accent) / 0.6); /* Fallback color */
-      /* A radial gradient to simulate a 3D, glossy water drop with a light reflection */
-      background-image: radial-gradient(circle at 30% 30%, hsl(0 0% 100% / 0.3), hsl(var(--color-accent) / 0.8) 50%, hsl(var(--color-accent) / 0.4) 100%);
-      
-      /* Create the teardrop shape for vertical scrollbars */
-      border-radius: 10px 10px 10px 3px;
-      
-      box-shadow: 
-        inset 0 0 2px hsl(0 0% 100% / 0.5), /* Inner highlight */
-        0 0 8px hsl(var(--color-accent) / 0.4); /* Outer glow */
-
-      border: 2px solid transparent; /* Creates padding inside the thumb */
-      background-clip: padding-box; /* Ensures the background doesn't bleed into the border area */
-
-      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* A bouncy transition */
-    }
-
-    /* Specific shape for horizontal scrollbar thumb */
-    ::-webkit-scrollbar-thumb:horizontal {
-        border-radius: 10px 3px 10px 10px; /* Teardrop pointing sideways */
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background-color: hsl(var(--color-accent) / 0.8);
-      background-image: radial-gradient(circle at 30% 40%, hsl(0 0% 100% / 0.4), hsl(var(--color-accent) / 0.9) 60%, hsl(var(--color-accent) / 0.5) 100%);
-      box-shadow: 
-        inset 0 0 3px hsl(0 0% 100% / 0.7),
-        0 0 14px hsl(var(--color-accent) / 0.7);
-      transform: scale(1.05); /* The droplet 'swells' on hover */
-    }
-
-    ::-webkit-scrollbar-thumb:active {
-        transform: scaleY(0.95) scaleX(1.05); /* Squish effect when dragging */
-        background-image: radial-gradient(circle at 30% 40%, hsl(0 0% 100% / 0.3), hsl(var(--color-accent)) 50%, hsl(var(--color-accent) / 0.6) 100%);
-    }
-
-    /* For Firefox */
-    /* Note: Firefox scrollbar styling is limited. We can only set colors, not complex shapes or effects. */
-    * {
-      scrollbar-width: thin;
-      /* thumb color, track color */
-      scrollbar-color: hsl(var(--color-accent) / 0.7) transparent;
-    }
-    
     /* Splash Screen Styles */
     #splash-screen {
         transition: opacity 0.5s ease-out;
@@ -191,22 +157,119 @@
     #splash-screen.fade-out {
         opacity: 0;
     }
-    /* Ensure dark mode splash screen is consistent */
     .dark #splash-screen {
-        background-color: #020617; /* slate-950 */
+        background-color: hsl(var(--color-bg-primary));
+    }
+
+    /* --- Intelligent UI Enhancements --- */
+
+    /* Main Panels */
+    .main-panel {
+      background-color: hsl(var(--color-bg-secondary));
+      border: 1px solid hsl(var(--color-border));
+      border-radius: 0.5rem;
+      box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.2), 0px 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease-in-out;
+    }
+
+    /* Stat Card Hover Effect */
+    .stat-card-group {
+      position: relative;
+      transition: all 0.2s ease-in-out;
+      border: 1px solid hsl(var(--color-border));
+      overflow: hidden;
+    }
+    .stat-card-group::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border: 1px solid transparent;
+      border-radius: inherit;
+      pointer-events: none;
+      transition: border-color 0.2s ease-out;
+    }
+    .stat-card-group:hover {
+      transform: translateY(-2px);
+      border-color: hsl(var(--color-border) / 0.5);
+    }
+    .stat-card-group:hover::before {
+      border-color: hsl(var(--color-accent));
+    }
+
+    /* Pulsing 'Live' indicator */
+    .live-indicator-active {
+      background-color: hsl(var(--color-accent) / 0.15);
+      color: hsl(var(--color-accent));
+    }
+    
+    /* New Signal Row Shimmer Effect */
+    .new-signal-row {
+      position: relative;
+      overflow: hidden;
+    }
+    .new-signal-row::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(100deg, transparent 20%, hsl(var(--color-accent) / 0.15) 50%, transparent 80%);
+      transform: translateX(-100%);
+      animation: shimmer-row 1.5s ease-out;
+      pointer-events: none;
+    }
+     .new-signal-row::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 15%;
+      bottom: 15%;
+      width: 3px;
+      background-color: hsl(var(--color-accent));
+      border-radius: 3px;
+      animation: pulse-sharp 1.5s ease-out;
+    }
+    @keyframes shimmer-row {
+      to { transform: translateX(100%); }
+    }
+
+
+    /* Expired/Inactive Signal Row Style */
+    .expired-signal-row {
+      position: relative;
+      opacity: 0.5;
+      transition: opacity 0.2s ease-in-out;
+    }
+    .expired-signal-row:hover {
+      opacity: 1;
+    }
+    .expired-signal-row::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 15%;
+      bottom: 15%;
+      width: 3px;
+      background-color: hsl(var(--color-text-muted));
+      border-radius: 3px;
+    }
+
+    /* Input focus styling */
+    input:focus, button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px hsl(var(--color-bg-primary)), 0 0 0 4px hsl(var(--color-accent));
     }
   </style>
 </head>
   <body>
     <div id="splash-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary">
       <div class="text-center animate-fade-in-up">
-        <svg class="h-16 w-16 text-accent mx-auto animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 17l10 5 10-5"></path>
-            <path d="M2 12l10 5 10-5"></path>
-            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+        <svg class="h-16 w-16 text-accent mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
         </svg>
         <h1 class="text-2xl font-semibold text-text-primary mt-4 tracking-wider">SignalFlow</h1>
-        <p class="text-text-secondary mt-1 text-sm">Loading Strategy...</p>
+        <p class="text-text-secondary mt-1 text-sm">Initializing Intelligence Engine...</p>
       </div>
     </div>
     <div id="root"></div>
