@@ -147,14 +147,13 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
                 symbol={optimizedSettings.symbol}
             />
         )}
-        <div className="space-y-4">
+        <fieldset disabled={!!optimizedSettings} className="space-y-4 disabled:opacity-50">
             <div className='flex justify-between items-center'>
                 <h3 className="text-md font-semibold text-text-primary">Strategy Settings</h3>
                 <select
                     value={selectedSymbol}
                     onChange={(e) => setSelectedSymbol(e.target.value)}
-                    className="bg-bg-primary border border-border rounded-md text-text-primary text-sm p-1.5 focus:outline-none focus:ring-1 focus:ring-accent"
-                    disabled={!!optimizedSettings}
+                    className="bg-bg-primary border border-border rounded-md text-text-primary text-sm p-1.5 focus:outline-none focus:ring-1 focus:ring-accent custom-select-arrow disabled:cursor-not-allowed"
                 >
                     {settingOptions.map(opt => (
                         <option key={opt} value={opt}>
@@ -173,12 +172,11 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
                 <SettingInput label="ATR Vol Filter" value={localSettings.atrFilterMultiplier} name="atrFilterMultiplier" step={0.05} onChange={handleSettingChange} tooltip="ATR must be above this multiple of median ATR to be considered volatile enough."/>
              </div>
              
-             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent"
-                disabled={!!optimizedSettings}
+             <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:cursor-not-allowed"
              >
                 Update {selectedSymbol === 'base' ? 'Base' : selectedSymbol} Settings
             </button>
-        </div>
+        </fieldset>
 
         <div>
             <button onClick={() => setShowLogs(!showLogs)} className="flex justify-between items-center w-full text-left">

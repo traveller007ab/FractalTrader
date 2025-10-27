@@ -206,7 +206,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                     </div>
                     <div className="max-h-40 overflow-y-auto bg-bg-primary/50 dark:bg-slate-900/50 p-2 rounded-md border border-border space-y-2">
                         {files.map(({file, status, error}, index) => (
-                           <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between text-sm p-1.5 rounded bg-bg-secondary/50 dark:bg-slate-800/50">
+                           <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between text-sm p-1.5 rounded bg-bg-secondary/50 dark:bg-slate-800/50 hover:bg-border/50 transition-colors">
                                <p className="truncate text-text-secondary" title={file.name}>{file.name}</p>
                                {status === 'running' && <SpinnerIcon className="w-4 h-4 text-sky-400 animate-spin" />}
                                {status === 'succeeded' && <CheckCircleIcon className="w-4 h-4 text-emerald-400 animate-pop-in" />}
@@ -246,7 +246,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                        
                     </div>
                      <Tooltip content={`Uses a genetic algorithm to find the best parameters for ${optimizationSymbol} based on all queued data.`}>
-                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-accent/30">
                             {isOptimizing || parsing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
                             {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : `Optimize ${optimizationSymbol}`)}
                         </button>

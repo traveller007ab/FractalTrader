@@ -99,7 +99,7 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
             <button
             onClick={() => onCopyTrade(signal)}
             disabled={!!copiedTrade}
-            className="inline-flex items-center p-2 border border-border text-xs font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center p-2 border border-border text-xs font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-accent/10 hover:border-accent/30 hover:text-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
                 <CopyIcon className="w-4 h-4" />
             </button>

@@ -398,7 +398,7 @@ function App() {
                             optimizationState={optimizationState}
                             onClearFiles={handleClearFiles}
                             optimizedSettings={optimizedSettings}
-                            onClearOptimizedSettings={() => setOptimizedSettings(null)}
+                            onClearOptimizedSettings={() => { setOptimizedSettings(null); soundManager.play('click'); }}
                             signals={signals}
                             addToast={addToast}
                             optimizationProgress={optimizationProgress}

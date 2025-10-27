@@ -83,10 +83,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                     </button>
                 ))}
                 <div
-                    className="absolute bottom-0 h-0.5 bg-accent transition-all duration-300 ease-in-out"
+                    className="absolute bottom-0 h-0.5 bg-accent transition-transform duration-300 ease-in-out"
                     style={{
-                        left: `${tabIndices[activeTab] * (100 / tabs.length)}%`,
                         width: `${100 / tabs.length}%`,
+                        transform: `translateX(${tabIndices[activeTab] * 100}%)`,
                     }}
                 ></div>
             </div>

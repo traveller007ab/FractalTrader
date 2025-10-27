@@ -140,14 +140,17 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
             <ChartIcon className="w-6 h-6 mr-3 text-accent" />
             <h2 className="text-lg font-semibold text-text-primary">Performance Analytics</h2>
          </div>
-         <div className="flex items-center bg-bg-primary/50 rounded-md p-1 border border-border">
-             <button onClick={() => setActiveTab('live')} className={`px-3 py-1 text-sm rounded transition-colors ${activeTab === 'live' ? 'live-indicator-active' : 'text-text-secondary hover:bg-border/50'}`}>Live</button>
-             <button onClick={() => setActiveTab('backtest')} className={`px-3 py-1 text-sm rounded transition-colors ${activeTab === 'backtest' ? 'bg-border text-text-primary' : 'text-text-secondary hover:bg-border/50'}`}>Backtests</button>
+         <div className="relative flex items-center bg-bg-primary/50 rounded-md p-1 border border-border w-40">
+            <div className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-accent rounded transition-transform duration-300 ease-in-out"
+                style={{ transform: `translateX(${activeTab === 'live' ? '0%' : '100%'})` }}>
+            </div>
+            <button onClick={() => setActiveTab('live')} className={`relative z-10 w-1/2 py-1 text-sm rounded-sm transition-colors duration-300 ${activeTab === 'live' ? 'text-white' : 'text-text-secondary hover:bg-border/50'}`}>Live</button>
+            <button onClick={() => setActiveTab('backtest')} className={`relative z-10 w-1/2 py-1 text-sm rounded-sm transition-colors duration-300 ${activeTab === 'backtest' ? 'text-white' : 'text-text-secondary hover:bg-border/50'}`}>Backtests</button>
          </div>
       </div>
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-text-primary">{cardTitle}</h3>
+            <h3 className={`font-semibold transition-colors ${focusedBacktestMetrics ? 'text-accent text-base' : 'text-text-primary'}`}>{cardTitle}</h3>
             {focusedBacktestMetrics && (
                 <button onClick={onClearActiveBacktest} className="text-xs flex items-center gap-1 text-text-secondary hover:text-text-primary">
                     <XMarkIcon className="w-4 h-4"/> Return to Aggregate

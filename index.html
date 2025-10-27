@@ -65,6 +65,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-image: radial-gradient(hsl(var(--color-border)) 0.5px, transparent 0);
+    background-size: 20px 20px;
   }
 
   /* --- Professional Scrollbar --- */
@@ -123,6 +125,7 @@
           },
           animation: {
             'fade-in-up': 'fade-in-up 0.4s ease-out both',
+            'pop-in': 'pop-in 0.3s ease-out forwards',
             'shimmer': 'shimmer 2s infinite linear',
             'pulse-sharp': 'pulse-sharp 1.5s ease-out infinite',
             'border-in': 'border-in 0.3s ease-out forwards',
@@ -131,6 +134,10 @@
             'fade-in-up': {
               '0%': { opacity: '0', transform: 'translateY(1rem)' },
               '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+             'pop-in': {
+                '0%': { opacity: '0', transform: 'scale(0.95)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
             },
             'shimmer': {
               '0%': { background-position: '-1000px 0' },
@@ -172,29 +179,41 @@
       transition: all 0.2s ease-in-out;
     }
 
+    /* "Engine Start" Glow Animation */
+    @keyframes engine-start-glow {
+        0% {
+            border-color: hsl(var(--color-border));
+            box-shadow: inset 0 0 0px hsl(var(--color-accent)/0), 0 0 0px hsl(var(--color-accent)/0);
+        }
+        15% {
+            /* Ignition spark */
+            border-color: hsl(var(--color-accent));
+            box-shadow: inset 0 0 10px hsl(var(--color-accent)/0.7), 0 0 5px hsl(var(--color-accent)/0.3);
+        }
+        40% {
+            /* Power flare */
+            border-color: hsl(var(--color-accent));
+            box-shadow: inset 0 0 2px hsl(var(--color-accent)/0.3), 0 0 35px hsl(var(--color-accent)/0.6);
+        }
+        100% {
+            /* Steady running glow */
+            border-color: hsl(var(--color-accent) / 0.5);
+            box-shadow: inset 0 0 0px hsl(var(--color-accent)/0), 0 0 12px hsl(var(--color-accent) / 0.3);
+        }
+    }
+
     /* Stat Card Hover Effect */
     .stat-card-group {
       position: relative;
-      transition: all 0.2s ease-in-out;
+      transition: transform 0.2s ease-in-out;
       border: 1px solid hsl(var(--color-border));
-      overflow: hidden;
-    }
-    .stat-card-group::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      border: 1px solid transparent;
-      border-radius: inherit;
-      pointer-events: none;
-      transition: border-color 0.2s ease-out;
+      box-shadow: 0 0 0px transparent;
     }
     .stat-card-group:hover {
       transform: translateY(-2px);
-      border-color: hsl(var(--color-border) / 0.5);
+      animation: engine-start-glow 0.8s ease-out forwards;
     }
-    .stat-card-group:hover::before {
-      border-color: hsl(var(--color-accent));
-    }
+
 
     /* Pulsing 'Live' indicator */
     .live-indicator-active {
@@ -256,9 +275,24 @@
     }
 
     /* Input focus styling */
-    input:focus, button:focus-visible {
+    input:focus, button:focus-visible, select:focus {
         outline: none;
         box-shadow: 0 0 0 2px hsl(var(--color-bg-primary)), 0 0 0 4px hsl(var(--color-accent));
+    }
+    
+    /* Custom Select Arrow */
+    .custom-select-arrow {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='hsl(210 40% 50%)' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+    }
+    html:not(.light) .custom-select-arrow {
+       background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='hsl(210 40% 70%)' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     }
     
     /* "Breathing" glow for active Auto-Trade button */

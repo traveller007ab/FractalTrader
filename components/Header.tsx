@@ -15,7 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
       <div className="container mx-auto px-4 sm:px-6 lg:p-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center group">
-            <LogoIcon className="h-8 w-8 text-accent transition-transform duration-300 ease-in-out group-hover:rotate-[-15deg] group-hover:scale-110" />
+            <LogoIcon className="h-8 w-8 text-accent transition-all duration-300 ease-in-out group-hover:rotate-[-15deg] group-hover:scale-110 group-hover:[filter:drop-shadow(0_0_8px_hsl(var(--color-accent)))]" />
             <span className="ml-3 text-xl font-bold font-sans text-text-primary tracking-tight transition-colors group-hover:text-accent">SignalFlow</span>
           </div>
           <div className="flex items-center gap-4">
