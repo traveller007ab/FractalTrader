@@ -47,23 +47,15 @@ export class Optimizer {
             return { score: -Infinity, settings };
         }
 
-        // --- NEW ROBUSTNESS SCORING ---
         const profitableRuns = validRuns.filter(r => (r.metrics?.total_pnl ?? -1) >= 0);
 
-        // 1. Strict Consistency Check: Reject any strategy that isn't profitable on ALL datasets.
-        if (profitableRuns.length < this.datasets.length) {
-            return { score: -Infinity, settings };
-        }
-
-        // If we reach here, all runs were profitable. Now we evaluate the quality.
+        // --- AGGREGATE METRICS ---
         const aggregateMetrics = {
             total_pnl: 0,
             grossProfit: 0,
             grossLoss: 0,
             max_drawdown: 0,
-            winning_trades: 0,
         };
-        let worstProfitFactor = Infinity;
 
         validRuns.forEach(run => {
             const metrics = run.metrics!;
@@ -71,32 +63,34 @@ export class Optimizer {
             aggregateMetrics.grossProfit += metrics.grossProfit ?? 0;
             aggregateMetrics.grossLoss += metrics.grossLoss ?? 0;
             aggregateMetrics.max_drawdown = Math.max(aggregateMetrics.max_drawdown, metrics.max_drawdown);
-            aggregateMetrics.winning_trades += Math.round((metrics.win_rate / 100) * metrics.total_trades);
-            
-            if (metrics.profit_factor < worstProfitFactor) {
-                worstProfitFactor = metrics.profit_factor;
-            }
         });
+        
+        // --- NEW SCORING LOGIC (v2) ---
 
-        const win_rate = (aggregateMetrics.winning_trades / totalTrades) * 100;
+        // If there are no profitable runs at all, or less than half, it's a definite failure.
+        const profitableRunsRatio = profitableRuns.length / this.datasets.length;
+        if (profitableRunsRatio < 0.5) {
+             return { score: -Infinity, settings };
+        }
+        
         let aggregate_profit_factor = aggregateMetrics.grossProfit / aggregateMetrics.grossLoss;
         if (aggregateMetrics.grossLoss === 0) {
             aggregate_profit_factor = aggregateMetrics.grossProfit > 0 ? 9999 : 1;
         }
         if (isNaN(aggregate_profit_factor)) aggregate_profit_factor = 1;
-        
-        // 2. Robustness Factor: The final score is modulated by how well the strategy performed on its WORST dataset.
-        const robustnessFactor = Math.min(worstProfitFactor, 5); // Cap at 5 to prevent outliers from dominating
 
-        const pnl = aggregateMetrics.total_pnl > 0 ? aggregateMetrics.total_pnl : 1;
+        // 1. Consistency Score: A heavy penalty for each non-profitable run.
+        const consistency_penalty = Math.pow(profitableRunsRatio, 4); 
 
-        // The score is a blend of overall performance and robustness.
-        const score = (
-            Math.pow(pnl, 1.2) *
-            Math.pow(aggregate_profit_factor, 1.5) *
-            Math.pow(win_rate / 100, 1.5) *
-            robustnessFactor // The performance of the weakest link is a direct multiplier.
-        ) / (1 + (aggregateMetrics.max_drawdown / 100));
+        // 2. Performance Score: Heavily weights profit factor and total PnL.
+        // We use Math.max with 1 to avoid issues with negative PnL or small profit factors in the pow function.
+        const performance_score = (
+            Math.pow(Math.max(1, aggregateMetrics.total_pnl), 1.3) *
+            Math.pow(Math.max(1, aggregate_profit_factor), 1.8)
+        );
+
+        // 3. Final Score: Combines performance, consistency, and penalizes for drawdown.
+        const score = (performance_score * consistency_penalty) / (1 + (aggregateMetrics.max_drawdown / 100));
 
         return { score, settings };
     }
