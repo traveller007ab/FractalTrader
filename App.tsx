@@ -14,7 +14,7 @@ import { getSymbolFromFilename } from './lib/utils.ts';
 import { usePageFocus } from './hooks/usePageFocus.ts';
 import { soundManager } from './lib/soundManager.ts';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData } from './types.ts';
+import type { Signal, CopiedTrade, ToastMessage, StrategySettings, BacktestRun, TimeSeriesData, FullStrategySettings } from './types.ts';
 
 export interface FileWithStatus {
   file: File;
@@ -35,9 +35,9 @@ function App() {
     const [recentBacktests, setRecentBacktests] = useState<BacktestRun[]>([]);
     const [loading, setLoading] = useState(true);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
-    const [strategySettings, setStrategySettings] = useState<StrategySettings>(strategyConfig.base);
+    const [strategySettings, setStrategySettings] = useState<FullStrategySettings>(strategyConfig);
     const [engineLogs, setEngineLogs] = useState<string[]>([]);
-    const [optimizedSettings, setOptimizedSettings] = useState<StrategySettings | null>(null);
+    const [optimizedSettings, setOptimizedSettings] = useState<{ symbol: string; settings: StrategySettings } | null>(null);
     
     const [files, setFiles] = useState<FileWithStatus[]>([]);
     const [isBacktesting, setIsBacktesting] = useState(false);
@@ -48,6 +48,7 @@ function App() {
     const [sessionBacktestRuns, setSessionBacktestRuns] = useState<BacktestRun[]>([]);
     const [activeBacktest, setActiveBacktest] = useState<BacktestRun | null>(null);
     const [optimizationState, setOptimizationState] = useState<{fileId: string | null; count: number}>({ fileId: null, count: 0 });
+    const [optimizationProgress, setOptimizationProgress] = useState('');
 
 
     const addToast = useCallback((message: string, type: ToastMessage['type'] = 'info') => {
@@ -80,14 +81,28 @@ function App() {
             
             if (profileRes.error) throw profileRes.error;
             if (profileRes.data && profileRes.data.strategy_settings) {
-                setStrategySettings(profileRes.data.strategy_settings as StrategySettings);
+                const loadedSettings = profileRes.data.strategy_settings as Partial<FullStrategySettings>;
+                // Deep merge to ensure all keys from the default config are present.
+                // This prevents errors if the database contains an older, incomplete settings object.
+                const mergedSettings: FullStrategySettings = {
+                    ...strategyConfig, // Default structure
+                    ...loadedSettings, // Loaded settings override
+                    base: {
+                        ...strategyConfig.base,
+                        ...(loadedSettings.base || {}),
+                    },
+                    symbols: {
+                        ...strategyConfig.symbols,
+                        ...(loadedSettings.symbols || {}),
+                    },
+                };
+                setStrategySettings(mergedSettings);
             }
 
         } catch (error: any) {
             let message = "Error fetching initial data.";
             if (error && typeof error.message === 'string') {
                 message = error.message;
-                // Prettify common Supabase/network errors for the user toast.
                 if (message.toLowerCase().includes('fetch')) {
                     message = "Network error. Please check your connection.";
                 } else if (message.includes("JWT")) {
@@ -101,7 +116,6 @@ function App() {
         }
     }, [addToast]);
     
-    // Auto-refetch data when tab becomes visible again
     usePageFocus(() => {
         if (user) {
             addToast('Refreshing data...', 'info');
@@ -133,7 +147,7 @@ function App() {
                     setSignals([]);
                     setCopiedTrades([]);
                     setRecentBacktests([]);
-                    setStrategySettings(strategyConfig.base);
+                    setStrategySettings(strategyConfig);
                 }
             }
         );
@@ -141,7 +155,6 @@ function App() {
         return () => { authListener?.subscription.unsubscribe(); };
     }, [fetchInitialData]);
 
-    // Real-time subscriptions
     useEffect(() => {
         if (!user) return;
 
@@ -172,7 +185,6 @@ function App() {
         };
     }, [user, addToast]);
 
-    // Initialize Signal Engine
     useEffect(() => {
         const originalConsoleLog = console.log;
         console.log = (...args) => {
@@ -184,7 +196,6 @@ function App() {
         };
         
         signalEngine.setOnError((error) => {
-            // Shorten common, verbose errors for better toast display
             let message = error.message;
             if (message.includes("Failed to fetch")) {
                 message = "Signal Engine: Network error fetching market data.";
@@ -222,25 +233,29 @@ function App() {
         }
     };
     
-    const handleSettingsUpdate = async (newSettings: StrategySettings, source: 'user' | 'optimizer' = 'user') => {
-        setStrategySettings(newSettings);
-        signalEngine.updateSettings(newSettings);
+    const handleSettingsUpdate = async (symbolToUpdate: string, newSettings: StrategySettings) => {
+        const updatedSettings: FullStrategySettings = {
+            ...strategySettings,
+            base: symbolToUpdate === 'base' ? newSettings : strategySettings.base,
+            symbols: {
+                ...strategySettings.symbols,
+                ...(symbolToUpdate !== 'base' && { [symbolToUpdate]: newSettings }),
+            }
+        };
 
-        if(source === 'optimizer') {
-            addToast('Optimized settings have been applied and saved.', 'success');
-        } else {
-            addToast('Strategy settings saved and applied to live engine.', 'success');
-        }
+        setStrategySettings(updatedSettings);
+        signalEngine.updateSettings(updatedSettings);
+
+        addToast(`${symbolToUpdate.toUpperCase()} settings saved and applied.`, 'success');
         soundManager.play('success');
         
-        // Clear any pending optimization results after saving
         if (optimizedSettings) {
             setOptimizedSettings(null);
         }
 
         if (!user) return;
         try {
-            const { error } = await supabase.from('profiles').upsert({ id: user.id, strategy_settings: newSettings });
+            const { error } = await supabase.from('profiles').upsert({ id: user.id, strategy_settings: updatedSettings });
             if (error) throw error;
         } catch(error: any) {
             addToast(`Failed to save settings to profile: ${error.message}`, 'error');
@@ -252,18 +267,18 @@ function App() {
         setActiveBacktest(null);
     };
 
-    const handleBacktestComplete = async (file: File, parsedData: TimeSeriesData[], settingsToUse: StrategySettings): Promise<void> => {
+    const handleBacktestComplete = async (file: File, parsedData: TimeSeriesData[]): Promise<void> => {
         if (!user) return;
         const startTime = new Date();
         try {
             const symbol = getSymbolFromFilename(file.name);
-            const { metrics } = runBacktestFromData(parsedData, settingsToUse, symbol);
+            const { metrics } = runBacktestFromData(parsedData, strategySettings, symbol);
             const endTime = new Date();
             const newRun: BacktestRun = {
                 id: crypto.randomUUID(),
                 user_id: user.id,
                 strategy: "fractal_shift_rbs_v2",
-                params: { symbol, ...settingsToUse },
+                params: { symbol, ...strategySettings },
                 metrics,
                 started_at: startTime.toISOString(),
                 ended_at: endTime.toISOString(),
@@ -301,40 +316,33 @@ function App() {
     const handleOptimize = async (filesToOptimize: OptimizationData[]) => {
       if (!user || filesToOptimize.length === 0) return;
       setIsOptimizing(true);
-      setOptimizedSettings(null); // Clear previous results
+      setOptimizedSettings(null);
+      setOptimizationProgress('');
       
-      const fileId = filesToOptimize.map(f => `${f.file.name}-${f.file.size}`).sort().join(';');
-      const currentCount = optimizationState.fileId === fileId ? optimizationState.count : 0;
-      
-      const fileNames = filesToOptimize.length > 1 ? `${filesToOptimize.length} files` : filesToOptimize[0].file.name;
-      addToast(
-        currentCount === 0
-          ? `Optimizing strategy for ${fileNames}... This may take a moment.`
-          : `Refining optimization (Lvl ${currentCount + 1})...`,
-        'info'
-      );
+      const symbolToOptimize = getSymbolFromFilename(filesToOptimize[0].file.name);
+      const fileNames = filesToOptimize.length > 1 ? `${filesToOptimize.length} files for ${symbolToOptimize}` : filesToOptimize[0].file.name;
+      addToast(`Optimizing strategy for ${fileNames}... This may take a moment.`, 'info');
       
       try {
-        const optimizer = new Optimizer(filesToOptimize, strategySettings, currentCount);
+        const optimizer = new Optimizer(filesToOptimize, strategySettings, symbolToOptimize);
+        optimizer.onProgress(({ generation, totalGenerations, bestScore }) => {
+            setOptimizationProgress(`Gen ${generation}/${totalGenerations} | Best Score: ${bestScore.toFixed(2)}`);
+        });
+
         const bestSettings = await optimizer.run();
 
         if(bestSettings) {
-            setOptimizedSettings(bestSettings);
+            setOptimizedSettings({ symbol: symbolToOptimize, settings: bestSettings });
             addToast('Optimization complete! Review the new settings.', 'success');
-            
-            // Automatically run a "preview" backtest with the new settings if it was a single file
-            if (filesToOptimize.length === 1) {
-                await handleBacktestComplete(filesToOptimize[0].file, filesToOptimize[0].data, bestSettings);
-            }
-            setOptimizationState({ fileId, count: currentCount + 1 });
         } else {
-            addToast(`Optimization could not find a better configuration.`, 'info');
+            addToast(`Optimization could not find a better configuration for ${symbolToOptimize}.`, 'info');
         }
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Unknown optimization error";
         addToast(`Optimization failed: ${message}`, 'error');
       } finally {
         setIsOptimizing(false);
+        setOptimizationProgress('');
       }
     }
 
@@ -372,8 +380,7 @@ function App() {
                     <div className="w-full lg:w-[26rem] animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                         <RightSidebar 
                             strategySettings={strategySettings} 
-                            onSettingsUpdate={(settings) => handleSettingsUpdate(settings, 'user')}
-                            onApplyOptimizedSettings={(settings) => handleSettingsUpdate(settings, 'optimizer')}
+                            onSettingsUpdate={handleSettingsUpdate}
                             engineLogs={engineLogs}
                             files={files}
                             setFiles={setFiles}
@@ -383,7 +390,7 @@ function App() {
                             backtestProgress={backtestProgress}
                             setBacktestProgress={setBacktestProgress}
                             stopBacktestRef={stopBacktestRef}
-                            onRunBacktest={(file, data) => handleBacktestComplete(file, data, strategySettings)}
+                            onRunBacktest={handleBacktestComplete}
                             onOptimize={handleOptimize}
                             onSessionStart={handleSessionStart}
                             recentBacktests={recentBacktests}
@@ -394,6 +401,7 @@ function App() {
                             onClearOptimizedSettings={() => setOptimizedSettings(null)}
                             signals={signals}
                             addToast={addToast}
+                            optimizationProgress={optimizationProgress}
                         />
                     </div>
                 </div>

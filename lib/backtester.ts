@@ -1,5 +1,5 @@
 // Fix: Add file extensions to imports for proper module resolution.
-import type { TimeSeriesData, StrategySettings, BacktestMetrics, PnlDataPoint } from '../types.ts';
+import type { TimeSeriesData, StrategySettings, BacktestMetrics, PnlDataPoint, FullStrategySettings } from '../types.ts';
 import { getSymbolSettings } from './strategyRBSv2Config.ts';
 
 interface BacktestTrade {
@@ -49,10 +49,10 @@ const median = (arr: number[]): number => {
 
 export function runBacktestFromData(
     allData: TimeSeriesData[],
-    baseSettings: StrategySettings,
+    fullSettings: FullStrategySettings,
     symbol: string // Symbol is now required for per-symbol settings
 ): { trades: BacktestTrade[], metrics: BacktestMetrics } {
-    const settings = getSymbolSettings(symbol, baseSettings);
+    const settings = getSymbolSettings(symbol, fullSettings);
     const requiredDataLength = Math.max(settings.smaPeriod + 3, 50);
 
     if (!allData || allData.length < requiredDataLength) {
@@ -111,7 +111,7 @@ export function runBacktestFromData(
         // Don't open a new trade if one is already active
         if (openTrade) continue;
 
-        // --- Look for New Trades (RBS v1 Logic) ---
+        // --- Look for New Trades (RBS v2 Logic) ---
 
         // Rule D1: Fractal Detection
         let lastPivotHigh: {price: number, index: number} | null = null;

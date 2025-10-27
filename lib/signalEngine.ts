@@ -1,7 +1,7 @@
 // Fix: Add file extensions to imports to ensure proper module resolution and typing.
 import { supabase } from './supabaseClient.ts';
 import { getTimeSeries } from './twelveDataClient.ts';
-import type { Signal, SignalMetadata, StrategySettings, TimeSeriesData } from '../types.ts';
+import type { Signal, SignalMetadata, StrategySettings, TimeSeriesData, FullStrategySettings } from '../types.ts';
 import { strategyConfig, getSymbolSettings } from './strategyRBSv2Config.ts';
 
 // Technical Analysis helper functions
@@ -42,12 +42,12 @@ const median = (arr: number[]): number => {
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD', 'XAG/USD'];
+const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD', 'XAG/USD', 'SOL/USD'];
 
 class SignalEngine {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastSignalInfo: Map<string, { timestamp: number; price: number; side: 'buy' | 'sell' }> = new Map();
-  private settings: StrategySettings = strategyConfig.base;
+  private settings: FullStrategySettings = strategyConfig;
   private onError: ((error: Error) => void) | null = null;
   private dailyDataCache: Map<string, { fetchedDate: string; data: TimeSeriesData[] }> = new Map();
 
@@ -55,8 +55,8 @@ class SignalEngine {
     this.onError = callback;
   }
   
-  public updateSettings(newSettings: StrategySettings) {
-    console.log('[SignalEngine] Base settings updated. Note: Per-symbol settings from config still apply.', newSettings);
+  public updateSettings(newSettings: FullStrategySettings) {
+    console.log('[SignalEngine] Full strategy settings updated.', newSettings);
     this.settings = newSettings;
   }
   
@@ -91,8 +91,8 @@ class SignalEngine {
             this.onError(new Error(errorMessage));
         }
       }
-      // Add a delay to avoid hitting API rate limits. 20 seconds is a safe buffer.
-      await new Promise(resolve => setTimeout(resolve, 20000));
+      // Add a delay to avoid hitting API rate limits. 15 seconds is a safe buffer.
+      await new Promise(resolve => setTimeout(resolve, 15000));
     }
     console.log('[SignalEngine] All symbols checked.');
   }
@@ -145,7 +145,7 @@ class SignalEngine {
     // --- Rule D2: Shift Trigger Logic ---
     let shift: 'buy' | 'sell' | null = null;
     const entryPrice = latestBar.close;
-    const shiftBreakValue = Math.max(latestAtr * 0.25, entryPrice * 0.002);
+    const shiftBreakValue = Math.max(latestAtr * shiftAtrMultiplier, entryPrice * 0.002);
 
     if (lastPivotHigh.index > lastPivotLow.index && entryPrice > lastPivotHigh.price + shiftBreakValue) {
       shift = 'buy';
@@ -256,9 +256,10 @@ class SignalEngine {
 
     // --- Signal Output Schema ---
     const newSignal: Omit<Signal, 'signal_id' | 'timestamp'> = {
-      strategy: 'fractal_shift_rbs_v1',
+      strategy: 'fractal_shift_rbs_v2',
       symbol: symbol,
-      exchange: strategyConfig.symbolSettings[symbol as keyof typeof strategyConfig.symbolSettings].exchange as Signal['exchange'],
+      // Fix: Use the exchange from the resolved symbol settings, which correctly handles defaults and user overrides.
+      exchange: symbolSettings.exchange,
       side: shift,
       price: entryPrice,
       size,
@@ -302,7 +303,7 @@ class SignalEngine {
       console.log('[SignalEngine] Engine already running.');
       return;
     }
-    console.log('[SignalEngine] Starting real-time strategy engine (RBS v1)...');
+    console.log('[SignalEngine] Starting real-time strategy engine (RBS v2)...');
     
     // Run once immediately, then schedule subsequent runs.
     (async () => {

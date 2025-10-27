@@ -94,6 +94,15 @@ export interface StrategySettings {
   duplicateThresholdPct: number;
 }
 
+export interface FullStrategySettings {
+  base: StrategySettings;
+  symbols: {
+    // Fix: Add optional `exchange` property to allow it in strategy configs
+    // while accommodating user settings that might not define it.
+    [symbol: string]: Partial<StrategySettings> & { exchange?: Signal['exchange'] };
+  };
+}
+
 export interface ToastMessage {
   id: number;
   message: string;
@@ -197,17 +206,17 @@ export type Database = {
         Row: {
           id: string
           // Fix: Using a specific type for the JSONB column instead of `any`.
-          strategy_settings: StrategySettings | null
+          strategy_settings: FullStrategySettings | null
         }
         Insert: {
           id: string
           // Fix: Using a specific type for the JSONB column instead of `any`.
-          strategy_settings?: StrategySettings | null
+          strategy_settings?: FullStrategySettings | null
         }
         Update: {
           id?: string
           // Fix: Using a specific type for the JSONB column instead of `any`.
-          strategy_settings?: StrategySettings | null
+          strategy_settings?: FullStrategySettings | null
         }
         // Fix: Add missing Relationships property to satisfy Supabase type requirements.
         Relationships: []

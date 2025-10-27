@@ -23,6 +23,7 @@ function mapSymbolToTicker(symbol: string): string {
     switch (symbol) {
         case 'BTC/USD': return 'X:BTCUSD';
         case 'ETH/USD': return 'X:ETHUSD';
+        case 'SOL/USD': return 'X:SOLUSD';
         case 'XAU/USD': return 'C:XAUUSD'; // Forex
         case 'XAG/USD': return 'C:XAGUSD'; // Forex for Silver
         default:

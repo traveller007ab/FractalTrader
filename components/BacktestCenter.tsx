@@ -5,9 +5,7 @@ import type { FileWithStatus, OptimizationData } from '../App';
 import { DocumentPlusIcon, FolderOpenIcon, PlayIcon, CogIcon, StopIcon, XMarkIcon, SpinnerIcon, CheckCircleIcon, XCircleIcon } from './icons';
 import { Tooltip } from './Tooltip';
 import { RecentRunsList } from './RecentRunsList.tsx';
-
-// Fix: The module augmentation was causing build errors and has been removed.
-// The `webkitdirectory` attribute will be handled via spread props to avoid type errors.
+import { getSymbolFromFilename } from '../lib/utils.ts';
 
 interface BacktestCenterProps {
     files: FileWithStatus[];
@@ -25,13 +23,14 @@ interface BacktestCenterProps {
     onViewBacktest: (run: BacktestRun) => void;
     optimizationState: { fileId: string | null; count: number };
     onClearFiles: () => void;
+    optimizationProgress: string;
 }
 
 export const BacktestCenter: React.FC<BacktestCenterProps> = ({ 
     files, setFiles, isBacktesting, setIsBacktesting, isOptimizing, 
     backtestProgress, setBacktestProgress, stopBacktestRef, onRunBacktest, 
     onOptimize, onSessionStart, recentBacktests, onViewBacktest,
-    optimizationState, onClearFiles
+    onClearFiles, optimizationProgress
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const folderInputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +53,6 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
 
         setFiles(prev => [...prev, ...uniqueNewFiles]);
         setParsing(false);
-        // Reset input value to allow re-uploading the same file
         event.target.value = ''; 
     };
 
@@ -94,7 +92,6 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
         for (const fileWithStatus of files) {
             try {
                 const parsedData = await parseCsv(fileWithStatus.file);
-                // Fix: Use 'data' instead of 'parsedData' to align with the updated OptimizationData interface.
                 filesToOptimize.push({ file: fileWithStatus.file, data: parsedData });
             } catch (e: unknown) {
                  const error = e as Error;
@@ -176,8 +173,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
         });
     };
     
-    const fileId = files.length > 0 ? files.map(f => `${f.file.name}-${f.file.size}`).sort().join(';') : null;
-    const isRefining = fileId && optimizationState.fileId === fileId && optimizationState.count > 0;
+    const optimizationSymbol = files.length > 0 ? getSymbolFromFilename(files[0].file.name) : null;
 
     return (
         <div className="p-4 space-y-4">
@@ -229,6 +225,11 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                             </div>
                         </div>
                     )}
+                     {isOptimizing && optimizationProgress && (
+                        <p className="text-xs font-semibold text-accent text-center animate-pulse">
+                            {optimizationProgress}
+                        </p>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-2 pt-1">
                         {!isBacktesting ? (
@@ -244,16 +245,13 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                         )}
                        
                     </div>
-                     <Tooltip content={
-                        isRefining
-                            ? `Run a deeper optimization based on the current settings. (Level ${optimizationState.count + 1})`
-                            : "Find the best parameters by testing against all queued datasets."
-                     }>
+                     <Tooltip content={`Uses a genetic algorithm to find the best parameters for ${optimizationSymbol} based on all queued data.`}>
                         <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed">
                             {isOptimizing || parsing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
-                            {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : (isRefining ? `Refine (Lvl ${optimizationState.count + 1})` : "Optimize Strategy"))}
+                            {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : `Optimize ${optimizationSymbol}`)}
                         </button>
                     </Tooltip>
+                     <p className="text-xs text-text-muted text-center pt-1">Note: For best results, optimize for one symbol at a time.</p>
                 </div>
             )}
             

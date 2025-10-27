@@ -1,48 +1,51 @@
-import type { StrategySettings } from '../types.ts';
+import type { StrategySettings, FullStrategySettings, Signal } from '../types.ts';
 
 type SymbolSettings = Partial<StrategySettings> & { exchange: 'BINANCE' | 'OANDA' };
 
 interface StrategyConfig {
     base: StrategySettings;
-    symbolSettings: {
+    symbols: {
         [symbol: string]: SymbolSettings;
     };
 }
 
-// Configuration for the RBS v1 Strategy.
-// This has been updated to match the user-provided v1 specification.
-export const strategyConfig: StrategyConfig = {
-    // Base settings are used for all symbols per RBS v1 spec.
+// Configuration for the RBS v2 Strategy.
+// This now separates base settings from symbol-specific overrides.
+export const strategyConfig: FullStrategySettings = {
     base: {
-        // Detection
-        shiftAtrMultiplier: 0.25, // Note: This is now part of a more complex rule in the engine.
-        // Trend
+        shiftAtrMultiplier: 0.25,
         smaPeriod: 20,
-        // Daily Structure
         proximityAtrMultiplier: 0.5,
-        // Volatility & Volume
         atrPeriod: 14,
         atrFilterMultiplier: 0.75,
         volumeFilterMultiplier: 2.0,
-        // Risk
         stopLossAtrMultiplier: 1.5,
         takeProfitR_R: 2.0,
         riskPercent: 0.5,
-        // Emission & Lifecycle
         confidenceThreshold: 0.60,
         cooldownBars: 5,
-        duplicateThresholdPct: 0.0025, // 0.25%
+        duplicateThresholdPct: 0.0025,
     },
-    // Per-symbol settings are now only for exchange information, not strategy overrides.
-    symbolSettings: {
+    symbols: {
         'BTC/USD': {
             exchange: 'BINANCE',
+            riskPercent: 0.4,
+            takeProfitR_R: 2.2,
         },
         'ETH/USD': {
             exchange: 'BINANCE',
+            riskPercent: 0.5,
+            takeProfitR_R: 2.5,
         },
         'XAU/USD': {
             exchange: 'OANDA',
+            stopLossAtrMultiplier: 1.8,
+            smaPeriod: 25,
+        },
+        'SOL/USD': {
+            exchange: 'BINANCE',
+            smaPeriod: 22,
+            atrFilterMultiplier: 0.8,
         },
         'XAG/USD': {
             exchange: 'OANDA',
@@ -50,14 +53,24 @@ export const strategyConfig: StrategyConfig = {
     }
 };
 
-// Helper function to get the final settings for a symbol, merging base and specific settings
-export function getSymbolSettings(symbol: string, currentSettings: StrategySettings): StrategySettings {
-    const symbolOverrides = strategyConfig.symbolSettings[symbol] || {};
-    // Start with the strategyConfig base, then symbol-specific overrides (exchange), and finally the current settings
-    // This ensures that passed-in settings (from UI or optimizer) have the highest priority for optimizable params.
-    return {
-        ...strategyConfig.base,
-        ...symbolOverrides,
-        ...currentSettings,
+// Fix: Update getSymbolSettings to correctly merge configurations and include the exchange property in its return type.
+// This makes it the single source of truth for a symbol's settings.
+// Helper function to get the final, combined settings for a given symbol.
+export function getSymbolSettings(symbol: string, fullSettings: FullStrategySettings): StrategySettings & { exchange: Signal['exchange'] } {
+    const defaultSymbolConfig = strategyConfig.symbols[symbol as keyof typeof strategyConfig.symbols];
+    const userSymbolConfig = fullSettings.symbols[symbol] || {};
+
+    const finalSettings = {
+        ...strategyConfig.base,      // 1. Code-level base defaults
+        ...(defaultSymbolConfig || {}), // 2. Code-level symbol-specific defaults
+        ...fullSettings.base,          // 3. User's saved base settings (overrides defaults)
+        ...userSymbolConfig,           // 4. User's symbol settings (overrides all above)
     };
+    
+    // Ensure there's a fallback exchange if no config exists at all for the symbol
+    if (!finalSettings.exchange) {
+        (finalSettings as any).exchange = 'BINANCE';
+    }
+
+    return finalSettings as StrategySettings & { exchange: Signal['exchange'] };
 }

@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { StrategySettings } from './StrategySettings.tsx';
 import { BacktestCenter } from './BacktestCenter.tsx';
 import { BeakerIcon, ListBulletIcon, RobotIcon } from './icons.tsx';
-import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, ToastMessage } from '../types';
+import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, ToastMessage, FullStrategySettings } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
 import { TradeExecutionSection } from './TradeExecutionSection.tsx';
 import { soundManager } from '../lib/soundManager.ts';
 
 interface RightSidebarProps {
-    strategySettings: StrategySettingsType;
-    onSettingsUpdate: (settings: StrategySettingsType) => void;
-    onApplyOptimizedSettings: (settings: StrategySettingsType) => void;
+    strategySettings: FullStrategySettings;
+    onSettingsUpdate: (symbol: string, settings: StrategySettingsType) => void;
     engineLogs: string[];
     files: FileWithStatus[];
     setFiles: React.Dispatch<React.SetStateAction<FileWithStatus[]>>;
@@ -27,10 +26,11 @@ interface RightSidebarProps {
     onViewBacktest: (run: BacktestRun) => void;
     optimizationState: { fileId: string | null; count: number };
     onClearFiles: () => void;
-    optimizedSettings: StrategySettingsType | null;
+    optimizedSettings: { symbol: string, settings: StrategySettingsType } | null;
     onClearOptimizedSettings: () => void;
     signals: Signal[];
     addToast: (message: string, type?: ToastMessage['type']) => void;
+    optimizationProgress: string;
 }
 
 type TabId = 'strategy' | 'backtest' | 'trade';
@@ -100,7 +100,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                         <StrategySettings 
                             settings={props.strategySettings}
                             onSettingsUpdate={props.onSettingsUpdate}
-                            onApplyOptimizedSettings={props.onApplyOptimizedSettings}
                             logs={props.engineLogs}
                             optimizedSettings={props.optimizedSettings}
                             onClearOptimizedSettings={props.onClearOptimizedSettings}
