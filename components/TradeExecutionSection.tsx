@@ -21,7 +21,8 @@ const BACKEND_URL = 'http://localhost:3001';
 export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ signals, addToast }) => {
     const [automationStatus, setAutomationStatus] = useState<AutomationStatus>('manual');
     const [riskSettings, setRiskSettings] = useState({ maxPositions: 5, volumeCap: 0.1 });
-    const [isModalOpen, setIsModalOpen] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSetupComplete, setIsSetupComplete] = useState(false);
     const [pendingSignals, setPendingSignals] = useState<Signal[]>([]);
     const [livePositions, setLivePositions] = useState<LivePosition[]>([]);
     const [loadingPositions, setLoadingPositions] = useState(true);
@@ -136,8 +137,9 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
 
 
     const handleStatusChange = (status: AutomationStatus) => {
-        if(status === 'auto' && isModalOpen) {
-            addToast('Complete setup to enable Auto mode.', 'info');
+        if(status === 'auto' && !isSetupComplete) {
+            addToast('Please complete the risk setup first.', 'info');
+            setIsModalOpen(true);
             return;
         }
         setAutomationStatus(status);
@@ -152,6 +154,7 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
                 onSave={(settings) => {
                     setRiskSettings(settings);
                     setIsModalOpen(false);
+                    setIsSetupComplete(true);
                     setAutomationStatus('auto');
                      addToast('Risk settings saved. Automation is now ACTIVE.', 'success');
                 }}
@@ -170,7 +173,11 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
                         <button
                             key={status}
                             onClick={() => handleStatusChange(status)}
-                            className={`px-2 py-1.5 text-xs font-semibold rounded-md transition-colors ${automationStatus === status ? 'bg-accent text-white shadow' : 'text-text-secondary hover:bg-border'}`}
+                            className={`px-2 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                                automationStatus === status 
+                                ? (status === 'auto' ? 'auto-trade-active text-white shadow' : 'bg-accent text-white shadow')
+                                : 'text-text-secondary hover:bg-border'
+                            }`}
                         >
                             {status.toUpperCase()}
                         </button>

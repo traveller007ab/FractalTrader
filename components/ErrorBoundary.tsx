@@ -23,10 +23,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  // Fix: Converted to an arrow function property to ensure `this` is always correctly bound.
-  // Although React binds `this` for lifecycle methods, this change provides a more robust
-  // binding that can resolve issues in certain build configurations.
-  public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
+  // Fix: Converted from an arrow function property to a standard class method.
+  // React correctly binds `this` for lifecycle methods, and using the standard
+  // method syntax resolves TypeScript errors about `setState` not existing on the component instance.
+  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
@@ -44,9 +44,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  // Fix: Converted to an arrow function property to ensure `this` is always correctly bound.
-  // This resolves the type error where `this.props` was reported as not existing.
-  public render = () => {
+  // Fix: Converted from an arrow function property to a standard class method.
+  // This ensures `this` is correctly bound by React for the `render` lifecycle and
+  // resolves the TypeScript error where `this.props` was reported as not existing.
+  public render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-bg-primary text-text-secondary flex items-center justify-center text-center p-4">

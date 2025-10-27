@@ -260,6 +260,21 @@
         outline: none;
         box-shadow: 0 0 0 2px hsl(var(--color-bg-primary)), 0 0 0 4px hsl(var(--color-accent));
     }
+    
+    /* "Breathing" glow for active Auto-Trade button */
+    @keyframes pulse-glow {
+        0%, 100% {
+            background-color: hsl(var(--color-accent));
+            box-shadow: 0 0 8px hsl(var(--color-accent) / 0.8), 0 0 16px hsl(var(--color-accent) / 0.5);
+        }
+        50% {
+            background-color: hsl(var(--color-accent-hover));
+            box-shadow: 0 0 16px hsl(var(--color-accent) / 0.8), 0 0 24px hsl(var(--color-accent) / 0.5);
+        }
+    }
+    .auto-trade-active {
+        animation: pulse-glow 2.5s infinite ease-in-out;
+    }
   </style>
 </head>
   <body>
