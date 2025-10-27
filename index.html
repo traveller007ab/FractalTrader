@@ -183,34 +183,32 @@
     @keyframes engine-start-glow {
         0% {
             border-color: hsl(var(--color-border));
-            box-shadow: inset 0 0 0px hsl(var(--color-accent)/0), 0 0 0px hsl(var(--color-accent)/0);
+            box-shadow: 0 0 0px hsl(var(--color-accent)/0);
         }
         15% {
-            /* Ignition spark */
             border-color: hsl(var(--color-accent));
-            box-shadow: inset 0 0 10px hsl(var(--color-accent)/0.7), 0 0 5px hsl(var(--color-accent)/0.3);
+            box-shadow: 0 0 5px hsl(var(--color-accent)/0.3);
         }
         40% {
-            /* Power flare */
             border-color: hsl(var(--color-accent));
-            box-shadow: inset 0 0 2px hsl(var(--color-accent)/0.3), 0 0 35px hsl(var(--color-accent)/0.6);
+            box-shadow: 0 0 35px hsl(var(--color-accent)/0.6);
         }
         100% {
-            /* Steady running glow */
             border-color: hsl(var(--color-accent) / 0.5);
-            box-shadow: inset 0 0 0px hsl(var(--color-accent)/0), 0 0 12px hsl(var(--color-accent) / 0.3);
+            box-shadow: 0 0 12px hsl(var(--color-accent) / 0.3);
         }
     }
 
-    /* Stat Card Hover Effect */
+    /* Stat Card Hover Effect - REFINED */
     .stat-card-group {
       position: relative;
-      transition: transform 0.2s ease-in-out;
       border: 1px solid hsl(var(--color-border));
-      box-shadow: 0 0 0px transparent;
+      /* Define transitions for all properties that might change. This creates a smooth exit for the glow. */
+      transition: transform 0.2s ease-out, border-color 0.4s ease-out, box-shadow 0.4s ease-out;
     }
     .stat-card-group:hover {
       transform: translateY(-2px);
+      /* The animation now explicitly overrides the transition for a dynamic "engine start" effect */
       animation: engine-start-glow 0.8s ease-out forwards;
     }
 
