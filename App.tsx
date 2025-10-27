@@ -340,11 +340,11 @@ function App() {
     }
 
     return (
-        <div className="bg-bg-primary min-h-screen text-text-secondary">
+        <div className="bg-bg-primary h-screen text-text-secondary flex flex-col overflow-hidden">
             <Header session={session} onSignOut={() => supabase.auth.signOut()} />
-            <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-                <div className="flex flex-col lg:flex-row gap-6">
-                    <div className="flex-grow space-y-6 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+            <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_26rem] gap-6 h-full">
+                    <div className="space-y-6 animate-fade-in-up overflow-y-auto pr-2" style={{ animationDelay: '200ms' }}>
                         <PerformanceDashboard 
                             copiedTrades={copiedTrades}
                             sessionBacktestRuns={sessionBacktestRuns}
@@ -360,7 +360,7 @@ function App() {
                             user={user}
                         />
                     </div>
-                    <div className="flex-shrink-0 w-full lg:w-[26rem] animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                    <div className="w-full lg:w-[26rem] animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                         <RightSidebar 
                             strategySettings={strategySettings} 
                             onSettingsUpdate={(settings) => handleSettingsUpdate(settings, 'user')}

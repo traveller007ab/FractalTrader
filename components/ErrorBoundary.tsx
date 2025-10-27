@@ -1,4 +1,4 @@
-// Fix: Changed React import from namespace to default to align with project convention and resolve type inference issues with class components.
+// Fix: Changed to extend React.Component directly to ensure proper type inference for class components, resolving errors where `this.props` and `this.setState` were not recognized.
 import React from 'react';
 
 interface Props {

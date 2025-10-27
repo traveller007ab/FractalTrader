@@ -32,58 +32,95 @@ interface RightSidebarProps {
     addToast: (message: string, type?: ToastMessage['type']) => void;
 }
 
+type TabId = 'strategy' | 'backtest' | 'trade';
+
+const tabs: { id: TabId, label: string, icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
+    { id: 'strategy', label: 'Strategy', icon: ListBulletIcon },
+    { id: 'backtest', label: 'Backtest', icon: BeakerIcon },
+    { id: 'trade', label: 'Auto Trade', icon: RobotIcon },
+];
+
 export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
-    const [activeTab, setActiveTab] = useState<'strategy' | 'backtest' | 'trade'>('strategy');
+    const [activeTab, setActiveTab] = useState<TabId>('strategy');
+
+    const tabIndices: { [key in TabId]: number } = {
+        strategy: 0,
+        backtest: 1,
+        trade: 2,
+    };
+
+    const getPanelStyle = (index: number): React.CSSProperties => {
+        const offset = index - tabIndices[activeTab];
+        const isVisible = offset === 0;
+
+        return {
+            transform: `translateX(${offset * 100}%) translateX(${offset * 10}px) rotateY(${-offset * 40}deg)`,
+            opacity: isVisible ? 1 : 0,
+            pointerEvents: isVisible ? 'auto' : 'none',
+            zIndex: isVisible ? 2 : 1,
+        };
+    };
+
 
     return (
-        <div className="bg-bg-secondary rounded-lg shadow-lg border border-border h-full flex flex-col max-h-[calc(100vh-6rem)]">
-            <div className="flex border-b border-border flex-shrink-0">
-                <button
-                    onClick={() => setActiveTab('strategy')}
-                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'strategy' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
-                >
-                    <ListBulletIcon className="w-5 h-5" />
-                    Strategy
-                    {activeTab === 'strategy' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
-                </button>
-                <button
-                    onClick={() => setActiveTab('backtest')}
-                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'backtest' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
-                >
-                    <BeakerIcon className="w-5 h-5" />
-                    Backtest
-                    {activeTab === 'backtest' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
-                </button>
-                 <button
-                    onClick={() => setActiveTab('trade')}
-                    className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors relative ${activeTab === 'trade' ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
-                >
-                    <RobotIcon className="w-5 h-5" />
-                    Auto Trade
-                    {activeTab === 'trade' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></div>}
-                </button>
+        <div className="bg-bg-secondary/80 backdrop-blur-md border border-white/10 rounded-lg shadow-lg h-full flex flex-col max-h-[calc(100vh-6rem)]">
+            <div className="flex border-b border-white/10 flex-shrink-0 relative">
+                {tabs.map((tab, index) => (
+                     <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex-1 p-3 text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 relative ${activeTab === tab.id ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+                    >
+                        <div className={`transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : 'scale-100'}`}>
+                            <tab.icon className="w-5 h-5" />
+                        </div>
+                        <span className={`transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : 'scale-100'}`}>{tab.label}</span>
+                    </button>
+                ))}
+                <div
+                    className="absolute bottom-0 h-0.5 bg-accent transition-all duration-500 ease-in-out"
+                    style={{
+                        left: `${tabIndices[activeTab] * (100 / tabs.length)}%`,
+                        width: `${100 / tabs.length}%`,
+                    }}
+                ></div>
             </div>
             
-            <div className="flex-grow overflow-y-auto">
-                {activeTab === 'strategy' && (
-                    <StrategySettings 
-                        settings={props.strategySettings}
-                        onSettingsUpdate={props.onSettingsUpdate}
-                        onApplyOptimizedSettings={props.onApplyOptimizedSettings}
-                        logs={props.engineLogs}
-                        optimizedSettings={props.optimizedSettings}
-                        onClearOptimizedSettings={props.onClearOptimizedSettings}
-                    />
-                )}
-                {activeTab === 'backtest' && (
-                    <BacktestCenter {...props} />
-                )}
-                 {activeTab === 'trade' && (
-                    <TradeExecutionSection
-                        signals={props.signals}
-                        addToast={props.addToast}
-                    />
-                )}
+             <div className="flex-grow overflow-hidden relative" style={{ perspective: '1200px' }}>
+                <div
+                    style={getPanelStyle(0)}
+                    className="absolute w-full h-full transition-all duration-500 ease-in-out"
+                >
+                    <div className="w-full h-full overflow-y-auto">
+                        <StrategySettings 
+                            settings={props.strategySettings}
+                            onSettingsUpdate={props.onSettingsUpdate}
+                            onApplyOptimizedSettings={props.onApplyOptimizedSettings}
+                            logs={props.engineLogs}
+                            optimizedSettings={props.optimizedSettings}
+                            onClearOptimizedSettings={props.onClearOptimizedSettings}
+                        />
+                    </div>
+                </div>
+                <div
+                    style={getPanelStyle(1)}
+                    className="absolute w-full h-full transition-all duration-500 ease-in-out"
+                >
+                    <div className="w-full h-full overflow-y-auto">
+                         <BacktestCenter {...props} />
+                    </div>
+                </div>
+                <div
+                    style={getPanelStyle(2)}
+                    className="absolute w-full h-full transition-all duration-500 ease-in-out"
+                >
+                    <div className="w-full h-full overflow-y-auto">
+                        <TradeExecutionSection
+                            signals={props.signals}
+                            addToast={props.addToast}
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     );
