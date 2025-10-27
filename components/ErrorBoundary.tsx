@@ -23,9 +23,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  // Fix: Reverted to a standard class method. React binds `this` for lifecycle methods,
-  // so an arrow function is not necessary and may have been causing tooling issues.
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  // Fix: Using an arrow function for the class method to ensure `this` is correctly bound,
+  // resolving issues with accessing `setState`.
+  public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
@@ -43,9 +43,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  // Fix: Reverted to a standard class method. React binds `this` for lifecycle methods,
-  // so an arrow function is not necessary and may have been causing tooling issues.
-  public render() {
+  // Fix: Using an arrow function for the class method to ensure `this` is correctly bound,
+  // resolving issues with accessing `this.props` and component state.
+  public render = () => {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-bg-primary text-text-secondary flex items-center justify-center text-center p-4">
