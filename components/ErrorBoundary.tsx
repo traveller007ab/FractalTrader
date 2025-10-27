@@ -1,4 +1,3 @@
-// Fix: Changed to extend React.Component directly to ensure proper type inference for class components, resolving errors where `this.props` and `this.setState` were not recognized.
 import React from 'react';
 
 interface Props {
@@ -12,6 +11,8 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
+  // State is initialized as a public field, which is a modern and correct approach,
+  // avoiding potential issues with constructors in some build configurations.
   public state: State = {
     hasError: false,
     error: undefined,
@@ -22,7 +23,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  // FIX: Switched to an arrow function to ensure `this` is correctly bound.
+  // This resolves issues where the component's context might be lost.
+  public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
@@ -40,7 +43,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  public render() {
+  // FIX: Switched to an arrow function to ensure `this` is correctly bound.
+  // This resolves issues where the component's context might be lost.
+  public render = () => {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-bg-primary text-text-secondary flex items-center justify-center text-center p-4">

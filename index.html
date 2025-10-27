@@ -93,6 +93,7 @@
             'pop-in': 'pop-in 0.3s ease-out both',
             'fade-out-down': 'fade-out-down 0.3s ease-in both',
             'shimmer': 'shimmer 1.5s infinite linear',
+            'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
           },
           keyframes: {
             'fade-in-up': {
@@ -115,42 +116,47 @@
               '0%': { backgroundPosition: '-1000px 0' },
               '100%': { backgroundPosition: '1000px 0' },
             },
+            'pulse-glow': {
+              '0%, 100%': { boxShadow: '0 0 6px hsl(var(--color-accent) / 0.7), 0 0 2px hsl(var(--color-accent) / 0.6) inset' },
+              '50%': { boxShadow: '0 0 12px hsl(var(--color-accent) / 0.9), 0 0 3px hsl(var(--color-accent) / 0.8) inset' },
+            },
           },
         },
       },
     }
   </script>
   <style>
-    /* --- Enhanced Scrollbar Experience --- */
-    /* A modern, floating scrollbar with a subtle glow, designed to match your taste for dynamic UI. */
-    
+    /* --- High-Tech Hairline Scrollbar (Final Version) --- */
+    /* An extremely thin 1px scrollbar that is clean and visually 1px wide by default.
+       A powerful, intense glow appears exclusively on hover for interactive feedback. */
+
     /* For Webkit browsers (Chrome, Safari, Edge) */
     ::-webkit-scrollbar {
-      width: 15px;
+      width: 1px;
+      height: 1px;
     }
 
     ::-webkit-scrollbar-track {
-      background: transparent;
+      background-color: transparent; /* Track is invisible */
     }
 
     ::-webkit-scrollbar-thumb {
-      background-color: hsl(var(--color-accent));
-      border-radius: 10px;
-      border: 4px solid transparent;
-      background-clip: padding-box;
-      -webkit-background-clip: padding-box; /* For older webkit */
-      box-shadow: 0 0 8px hsl(var(--color-accent) / 0.7);
-      transition: all 0.3s ease;
+      background-color: hsl(var(--color-accent) / 0.7);
+      border-radius: 1px;
+      /* No box-shadow by default for a true 1px hairline appearance. */
+      box-shadow: none;
+      transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
     }
     
     ::-webkit-scrollbar-thumb:hover {
-      background-color: hsl(var(--color-accent-hover));
-      border-width: 3px; /* Thumb appears to grow */
-      box-shadow: 0 0 12px hsl(var(--color-accent) / 1); /* Glow intensifies */
+      background-color: hsl(var(--color-accent));
+      /* The power is in the interaction: a tight but intense glow appears only on hover. */
+      box-shadow: 0 0 4px hsl(var(--color-accent)), 0 0 2px hsl(var(--color-accent));
     }
     
     /* For Firefox */
     * {
+      /* Firefox doesn't support widths less than 'thin'. This is the best we can do. */
       scrollbar-width: thin;
       scrollbar-color: hsl(var(--color-accent)) transparent;
     }
