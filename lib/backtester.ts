@@ -24,16 +24,28 @@ const calculateSMA = (data: { close: number }[], period: number, startIndex: num
 
 const calculateATR = (data: { high: number; low: number; close: number }[], period: number, endIndex: number): number | null => {
     if (endIndex < period) return null;
+    // For simplicity and performance, backtester uses a simplified ATR for the current bar.
+    // A more rigorous backtest might calculate the full smoothed ATR series.
+    const relevantData = data.slice(Math.max(0, endIndex - period), endIndex + 1);
     const trs: number[] = [];
-    for (let i = Math.max(1, endIndex - period + 1); i <= endIndex; i++) {
-        const tr1 = data[i].high - data[i].low;
-        const tr2 = Math.abs(data[i].high - data[i-1].close);
-        const tr3 = Math.abs(data[i].low - data[i-1].close);
+    for (let i = 1; i < relevantData.length; i++) {
+        const prevBar = relevantData[i-1];
+        const currBar = relevantData[i];
+        const tr1 = currBar.high - currBar.low;
+        const tr2 = Math.abs(currBar.high - prevBar.close);
+        const tr3 = Math.abs(currBar.low - prevBar.close);
         trs.push(Math.max(tr1, tr2, tr3));
     }
     if (trs.length === 0) return null;
     return trs.reduce((acc, val) => acc + val, 0) / trs.length;
 };
+
+const median = (arr: number[]): number => {
+    if(arr.length === 0) return 0;
+    const sorted = [...arr].sort((a,b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
 
 export function runBacktestFromData(
     allData: TimeSeriesData[],
@@ -53,7 +65,7 @@ export function runBacktestFromData(
     const pnlHistory: PnlDataPoint[] = [{ date: allData[0]?.datetime || new Date().toISOString(), pnl: 0 }];
     let cumulativePnl = 0;
 
-    const { smaPeriod, atrPeriod, shiftAtrMultiplier, stopLossAtrMultiplier, takeProfitR_R, riskPercent } = settings;
+    const { smaPeriod, atrPeriod, atrFilterMultiplier, stopLossAtrMultiplier, takeProfitR_R, riskPercent } = settings;
 
     for (let i = requiredDataLength; i < allData.length; i++) {
         const currentBar = allData[i];
@@ -98,7 +110,9 @@ export function runBacktestFromData(
         // Don't open a new trade if one is already active
         if (openTrade) continue;
 
-        // --- Look for New Trades (RBS v2 Logic) ---
+        // --- Look for New Trades (RBS v1 Logic) ---
+
+        // Rule D1: Fractal Detection
         let lastPivotHigh: {price: number, index: number} | null = null;
         let lastPivotLow: {price: number, index: number} | null = null;
         for (let j = i - 3; j >= 2; j--) {
@@ -116,15 +130,19 @@ export function runBacktestFromData(
         const latestAtr = calculateATR(allData, atrPeriod, i);
         if (!latestAtr) continue;
         
+        // Rule D2: Shift Trigger
         let shift: 'buy' | 'sell' | null = null;
-        if (lastPivotHigh.index > lastPivotLow.index && currentBar.close > lastPivotHigh.price + latestAtr * shiftAtrMultiplier) {
+        const entryPrice = currentBar.close;
+        const shiftBreakValue = Math.max(latestAtr * 0.25, entryPrice * 0.002);
+
+        if (lastPivotHigh.index > lastPivotLow.index && entryPrice > lastPivotHigh.price + shiftBreakValue) {
             shift = 'buy';
-        } else if (lastPivotLow.index > lastPivotHigh.index && currentBar.close < lastPivotLow.price - latestAtr * shiftAtrMultiplier) {
+        } else if (lastPivotLow.index > lastPivotHigh.index && entryPrice < lastPivotLow.price - shiftBreakValue) {
             shift = 'sell';
         }
         if (!shift) continue;
 
-        // Trend Confirmation
+        // Rule T1 & T2: Trend Confirmation
         const latestSma = calculateSMA(allData, smaPeriod, i);
         const prevSma3 = calculateSMA(allData, smaPeriod, i - 3);
         if (!latestSma || !prevSma3) continue;
@@ -132,9 +150,17 @@ export function runBacktestFromData(
         if ((shift === 'buy' && trend !== 'bull') || (shift === 'sell' && trend !== 'bear')) {
             continue;
         }
+        
+        // Rule V1: Volatility Filter
+        const atrLookback = allData.slice(Math.max(0, i - 50), i + 1);
+        const atrs = atrLookback.map((_, index) => calculateATR(atrLookback, atrPeriod, index)).filter(v => v !== null) as number[];
+        const medianAtr = median(atrs);
+        if (latestAtr < medianAtr * atrFilterMultiplier) {
+            continue; // Skip due to low volatility
+        }
 
-        // --- Create New Trade ---
-        const entryPrice = currentBar.close;
+
+        // --- Create New Trade (Rule R1, R2) ---
         const stopDistance = latestAtr * stopLossAtrMultiplier;
         const riskUsd = accountEquity * (riskPercent / 100);
         const size = stopDistance > 0 ? riskUsd / stopDistance : 0;

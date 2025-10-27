@@ -42,7 +42,7 @@ const median = (arr: number[]): number => {
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD'];
+const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD', 'XAG/USD'];
 
 class SignalEngine {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -123,7 +123,7 @@ class SignalEngine {
     const latestBar = intervalData[intervalData.length - 1];
     const metadata: Partial<SignalMetadata> = {};
 
-    // --- Rule 1: Detection - Fractal & Shift Logic ---
+    // --- Rule D1: Detection - Fractal Logic ---
     let lastPivotHigh = null, lastPivotLow = null;
     for (let i = intervalData.length - 3; i >= 2; i--) {
         const p2 = intervalData[i-2], p1 = intervalData[i-1], center = intervalData[i], n1 = intervalData[i+1], n2 = intervalData[i+2];
@@ -141,18 +141,20 @@ class SignalEngine {
     const latestAtr = calculateATR(intervalData, atrPeriod).pop();
     if(!latestAtr) return;
     metadata.atr = latestAtr;
-
+    
+    // --- Rule D2: Shift Trigger Logic ---
     let shift: 'buy' | 'sell' | null = null;
     const entryPrice = latestBar.close;
+    const shiftBreakValue = Math.max(latestAtr * 0.25, entryPrice * 0.002);
 
-    if (lastPivotHigh.index > lastPivotLow.index && entryPrice > lastPivotHigh.price + latestAtr * shiftAtrMultiplier) {
+    if (lastPivotHigh.index > lastPivotLow.index && entryPrice > lastPivotHigh.price + shiftBreakValue) {
       shift = 'buy';
-    } else if (lastPivotLow.index > lastPivotHigh.index && entryPrice < lastPivotLow.price - latestAtr * shiftAtrMultiplier) {
+    } else if (lastPivotLow.index > lastPivotHigh.index && entryPrice < lastPivotLow.price - shiftBreakValue) {
       shift = 'sell';
     }
     if (!shift) return;
 
-    // --- Rule 2: Trend Confirmation ---
+    // --- Rule T1 & T2: Trend Confirmation ---
     const smas = calculateSMA(intervalData, smaPeriod);
     if(smas.length < 4) return;
     const smaSlope = smas[smas.length - 1] - smas[smas.length - 4];
@@ -163,7 +165,7 @@ class SignalEngine {
         return;
     }
 
-    // --- Rule 3: Daily Context ---
+    // --- Rule S1 & S2: Daily Context & Proximity Filter ---
     const PDH = dailyData[dailyData.length - 2].high;
     const PDL = dailyData[dailyData.length - 2].low;
     metadata.PDH = PDH;
@@ -181,7 +183,7 @@ class SignalEngine {
         return;
     }
 
-    // --- Rule 4: Volatility & Volume ---
+    // --- Rule V1: Volatility Filter ---
     const atrs = calculateATR(intervalData, atrPeriod).slice(-50);
     const medianAtr = median(atrs);
     if (latestAtr < medianAtr * atrFilterMultiplier) {
@@ -190,29 +192,42 @@ class SignalEngine {
         return;
     }
     metadata.volatility_filter = 'pass';
+    
+    // --- Rule V2 Setup ---
     const volume50 = intervalData.slice(-50).map(d => d.volume);
     const medianVolume = median(volume50);
     metadata.volume_spike = latestBar.volume >= medianVolume * volumeFilterMultiplier;
 
-    // --- Rule 6: Signal Confidence Model ---
+    // --- Rule C1, S3, S4, V2: Signal Confidence Model ---
     let confidence = 0.0;
-    confidence += 0.40; // Trend Agreement
-    if (latestAtr > medianAtr) confidence += 0.15; // ATR Strength
-    if (metadata.volume_spike) confidence += 0.10; // Volume Spike
-    confidence += 0.15; // PD Distance (passed proximity filter)
-    if (shift === 'buy' && entryPrice > PDH) confidence += 0.10; // PD breakout bonus
-    if (shift === 'sell' && entryPrice < PDL) confidence += 0.10; // PD breakdown bonus
+    // C1: Base components
+    confidence += 0.40; // Trend Match
+    const atrStrength = Math.min(1.0, latestAtr / medianAtr);
+    confidence += 0.10 * atrStrength; // ATR Strength
+    confidence += 0.18 * 0.70; // Mock Recent Success @ 70%
+    confidence += 0.05 * 1.0;  // Mock Liquidity as good
+
+    // Modifiers from other rules
+    if (!metadata.volume_spike) { // V2: Volume Filter Penalty
+        confidence -= 0.20;
+    }
+    if (entryPrice > PDL && entryPrice < PDH) { // S4: Range Bias Penalty
+        confidence -= 0.15;
+    }
+    if (shift === 'buy' && entryPrice > PDH) { // S3: Breakout Bonus
+        confidence += 0.10;
+    }
+    if (shift === 'sell' && entryPrice < PDL) { // S3: Breakout Bonus
+        confidence += 0.10;
+    }
     
-    // Mocked components for now
-    confidence += 0.15 * 0.7; // Mock recent win rate at 70%
-    confidence += 0.05; // Mock liquidity as good
-    
+    // --- Rule C2: Emission Condition ---
     if (confidence < confidenceThreshold) {
         console.log(`[SignalEngine] ${symbol} ${shift} signal skipped: Low confidence (${confidence.toFixed(2)}).`);
         return;
     }
 
-    // --- Rule 7: Signal Lifecycle ---
+    // --- Rule L1 & L2: Signal Lifecycle ---
     const lastSignal = this.lastSignalInfo.get(`${symbol}_${shift}`);
     if (lastSignal && (Date.now() - lastSignal.timestamp) < (cooldownBars * 15 * 60 * 1000)) {
         console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Cooldown period active.`);
@@ -223,20 +238,25 @@ class SignalEngine {
         return;
     }
 
-    // --- Rule 5: Risk Management ---
+    // --- Rule R1, R2, R3: Risk Management ---
+    const accountEquity = 100000; // Mock account equity
     const stopDistance = latestAtr * stopLossAtrMultiplier;
-    // Fix: Corrected a typo in the stop_loss calculation where the variable was being referenced during its own declaration. The sell-side calculation should add `stopDistance` to the `entryPrice`, not `stop_loss`.
     const stop_loss = shift === 'buy' ? entryPrice - stopDistance : entryPrice + stopDistance;
     const take_profit = shift === 'buy' ? entryPrice + (stopDistance * takeProfitR_R) : entryPrice - (stopDistance * takeProfitR_R);
     
-    const accountEquity = 100000; // Mock account equity
     const riskUsd = accountEquity * (riskPercent / 100);
     metadata.risk_usd = riskUsd;
-    const size = riskUsd / stopDistance;
+    let size = riskUsd / stopDistance;
 
-    // --- Rule 8: Output Schema ---
+    // R3: Exposure Cap
+    if (size * entryPrice > accountEquity * 0.20) {
+        size = (accountEquity * 0.20) / entryPrice;
+        console.log(`[SignalEngine] ${symbol} size adjusted due to exposure cap. New size: ${size.toFixed(4)}`);
+    }
+
+    // --- Signal Output Schema ---
     const newSignal: Omit<Signal, 'signal_id' | 'timestamp'> = {
-      strategy: 'fractal_shift_rbs_v2',
+      strategy: 'fractal_shift_rbs_v1',
       symbol: symbol,
       exchange: strategyConfig.symbolSettings[symbol as keyof typeof strategyConfig.symbolSettings].exchange as Signal['exchange'],
       side: shift,
@@ -282,7 +302,7 @@ class SignalEngine {
       console.log('[SignalEngine] Engine already running.');
       return;
     }
-    console.log('[SignalEngine] Starting real-time strategy engine (RBS v2)...');
+    console.log('[SignalEngine] Starting real-time strategy engine (RBS v1)...');
     
     // Run once immediately, then schedule subsequent runs.
     (async () => {

@@ -24,6 +24,7 @@ function mapSymbolToTicker(symbol: string): string {
         case 'BTC/USD': return 'X:BTCUSD';
         case 'ETH/USD': return 'X:ETHUSD';
         case 'XAU/USD': return 'C:XAUUSD'; // Forex
+        case 'XAG/USD': return 'C:XAGUSD'; // Forex for Silver
         default:
             // Attempt a generic conversion for other forex pairs if needed
             if (symbol.includes('/')) return `C:${symbol.replace('/', '')}`;
