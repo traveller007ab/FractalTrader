@@ -23,10 +23,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  // Fix: Changed to an arrow function to ensure `this` is correctly bound.
-  // This resolves the "setState does not exist" error by using public class field syntax,
-  // which guarantees the context of `this` within the method.
-  public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
+  // Fix: Reverted to a standard class method. React binds `this` for lifecycle methods,
+  // so an arrow function is not necessary and may have been causing tooling issues.
+  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
@@ -44,10 +43,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  // Fix: Changed to an arrow function to ensure `this` is correctly bound.
-  // This resolves the "props does not exist" error by using public class field syntax,
-  // making it consistent with other methods in the class.
-  public render = () => {
+  // Fix: Reverted to a standard class method. React binds `this` for lifecycle methods,
+  // so an arrow function is not necessary and may have been causing tooling issues.
+  public render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-bg-primary text-text-secondary flex items-center justify-center text-center p-4">

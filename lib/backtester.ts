@@ -59,9 +59,10 @@ export function runBacktestFromData(
         throw new Error(`Insufficient historical data. The strategy requires at least ${requiredDataLength} data points, but only ${allData?.length || 0} were provided.`);
     }
     
+    const STARTING_EQUITY = 200;
     const trades: BacktestTrade[] = [];
     let openTrade: BacktestTrade | null = null;
-    let accountEquity = 100000;
+    let accountEquity = STARTING_EQUITY;
     const pnlHistory: PnlDataPoint[] = [{ date: allData[0]?.datetime || new Date().toISOString(), pnl: 0 }];
     let cumulativePnl = 0;
 
@@ -198,12 +199,17 @@ export function runBacktestFromData(
 
 
     let maxDrawdown = 0;
-    let peakEquity = 100000;
-    const equityCurve = [100000, ...closedTrades.map(t => (peakEquity += t.pnl || 0))];
-    peakEquity = 100000;
+    let peakEquity = STARTING_EQUITY;
+    let currentEquity = STARTING_EQUITY;
+    const equityCurve = [STARTING_EQUITY];
+    for (const trade of closedTrades) {
+        currentEquity += trade.pnl || 0;
+        equityCurve.push(currentEquity);
+    }
+    
     for (const equity of equityCurve) {
         peakEquity = Math.max(peakEquity, equity);
-        const drawdown = ((peakEquity - equity) / peakEquity);
+        const drawdown = peakEquity > 0 ? ((peakEquity - equity) / peakEquity) : 0;
         maxDrawdown = Math.max(maxDrawdown, drawdown);
     }
     
