@@ -23,8 +23,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  // FIX: Switched to an arrow function to ensure `this` is correctly bound.
-  // This resolves issues where the component's context might be lost.
+  // FIX: Changed to an arrow function to ensure `this` is correctly bound and `setState` is accessible.
   public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
@@ -43,8 +42,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  // FIX: Switched to an arrow function to ensure `this` is correctly bound.
-  // This resolves issues where the component's context might be lost.
+  // FIX: Changed to an arrow function to ensure `this` is correctly bound and `props` are accessible.
   public render = () => {
     if (this.state.hasError) {
       return (

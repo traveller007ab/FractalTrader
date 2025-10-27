@@ -65,7 +65,7 @@ function App() {
                 supabase.from('signals').select('*').order('timestamp', { ascending: false }).limit(50),
                 supabase.from('copied_trades').select('*').eq('user_id', currentUser.id),
                 supabase.from('backtest_runs').select('*').eq('user_id', currentUser.id).order('started_at', { ascending: false }).limit(10),
-                supabase.from('profiles').select('strategy_settings').eq('id', currentUser.id).single()
+                supabase.from('profiles').select('strategy_settings').eq('id', currentUser.id).maybeSingle()
             ]);
 
             if (signalsRes.error) throw signalsRes.error;
@@ -77,16 +77,21 @@ function App() {
             if (backtestsRes.error) throw backtestsRes.error;
             setRecentBacktests(backtestsRes.data || []);
             
+            if (profileRes.error) throw profileRes.error;
             if (profileRes.data && profileRes.data.strategy_settings) {
                 setStrategySettings(profileRes.data.strategy_settings as StrategySettings);
             }
 
         } catch (error: any) {
             let message = "Error fetching initial data.";
-            if (typeof error.message === 'string' && error.message.toLowerCase().includes('fetch')) {
-                message = "Network error. Please check your connection.";
-            } else if(error.code) {
-                message = `Database error: ${error.message}`;
+            if (error && typeof error.message === 'string') {
+                message = error.message;
+                // Prettify common Supabase/network errors for the user toast.
+                if (message.toLowerCase().includes('fetch')) {
+                    message = "Network error. Please check your connection.";
+                } else if (message.includes("JWT")) {
+                    message = "Authentication error. Please sign out and sign in again.";
+                }
             }
             addToast(message, 'error');
             console.error("Fetch initial data error:", error);
