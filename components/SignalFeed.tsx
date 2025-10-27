@@ -40,10 +40,10 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
                     <th scope="col" style={{ width: '12%' }} className="pl-4 pr-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Symbol</th>
                     <th scope="col" style={{ width: '12%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Time</th>
                     <th scope="col" style={{ width: '8%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Side</th>
-                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Entry Price</th>
-                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Stop Loss</th>
-                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Take Profit</th>
-                    <th scope="col" style={{ width: '9%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">
+                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Entry Price</th>
+                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Stop Loss</th>
+                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Take Profit</th>
+                    <th scope="col" style={{ width: '9%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">
                         <Tooltip content="The bot's calculated confidence in this signal's success, based on multiple factors like volume and trend alignment.">
                             <span className="cursor-help border-b border-dashed border-text-muted/50">Confidence</span>
                         </Tooltip>

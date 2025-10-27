@@ -5,10 +5,10 @@ const SkeletonRow: React.FC = () => (
         <td className="px-4 py-3"><div className="h-4 bg-border rounded w-20"></div></td>
         <td className="px-4 py-3"><div className="h-4 bg-border rounded w-24"></div></td>
         <td className="px-4 py-3"><div className="h-4 bg-border rounded w-12"></div></td>
-        <td className="px-4 py-3"><div className="h-4 bg-border rounded w-24"></div></td>
-        <td className="px-4 py-3"><div className="h-4 bg-border rounded w-24"></div></td>
-        <td className="px-4 py-3"><div className="h-4 bg-border rounded w-24"></div></td>
-        <td className="px-4 py-3"><div className="h-4 bg-border rounded w-16 mx-auto"></div></td>
+        <td className="px-4 py-3 text-right"><div className="h-4 bg-border rounded w-24 inline-block"></div></td>
+        <td className="px-4 py-3 text-right"><div className="h-4 bg-border rounded w-24 inline-block"></div></td>
+        <td className="px-4 py-3 text-right"><div className="h-4 bg-border rounded w-24 inline-block"></div></td>
+        <td className="px-4 py-3 text-right"><div className="h-4 bg-border rounded w-16 inline-block"></div></td>
         <td className="px-4 py-3"><div className="h-5 bg-border rounded-full w-20"></div></td>
         <td className="px-4 py-3 text-center"><div className="h-8 w-10 bg-border rounded-md mx-auto"></div></td>
     </tr>
@@ -21,10 +21,10 @@ export const SignalFeedSkeleton: React.FC = () => (
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Symbol</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Time</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Side</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Entry Price</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Stop Loss</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Take Profit</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Confidence</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Entry Price</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Stop Loss</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Take Profit</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Confidence</th>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Status</th>
                 <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-text-muted uppercase tracking-wider">Action</th>
             </tr>

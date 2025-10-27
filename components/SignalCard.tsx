@@ -85,10 +85,10 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
       <td className="pl-4 pr-3 py-3 text-sm font-medium text-text-primary whitespace-nowrap">{signal.symbol}</td>
       <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{new Date(signal.timestamp).toLocaleTimeString()}</td>
       <td className={`px-3 py-3 text-sm font-semibold whitespace-nowrap ${signal.side === 'buy' ? 'text-success' : 'text-danger'}`}>{signal.side.toUpperCase()}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.price)}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.stop_loss)}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{formatPrice(signal.take_profit)}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-center">{formatConfidence(signal.confidence)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(signal.price)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(signal.stop_loss)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(signal.take_profit)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatConfidence(signal.confidence)}</td>
       <td className="px-3 py-3 text-sm whitespace-nowrap">
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.bg} ${status.color}`}>
             {status.text}

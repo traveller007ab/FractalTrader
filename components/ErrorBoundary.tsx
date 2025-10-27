@@ -23,8 +23,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  // Fix: Converted from an arrow function to a standard class method.
-  // React lifecycle methods are automatically bound by React, so they don't need to be arrow functions.
+  // Fix: Changed from an arrow function to a regular class method.
+  // React correctly binds `this` for lifecycle methods, and this avoids potential
+  // tooling issues with the public class field syntax, resolving the 'setState does not exist' error.
   public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
@@ -43,8 +44,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  // Fix: Converted from an arrow function to a standard class method.
-  // The render method should be a standard class method, not an arrow function property.
+  // Fix: Changed from an arrow function to a regular class method.
+  // React correctly binds `this` for lifecycle methods, resolving the 'props does not exist' error.
   public render() {
     if (this.state.hasError) {
       return (
