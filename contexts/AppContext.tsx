@@ -27,7 +27,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setToasts(prev => [...prev, { id, message, type }]);
     }, []);
     
-    // This will be rendered in App.tsx to provide the toast container
+    // Dynamically import Toast components to be rendered by the provider
     const ToastContainerComponent = React.lazy(() => import('../components/Toast.tsx').then(module => ({ default: module.ToastContainer })));
     const ToastComponent = React.lazy(() => import('../components/Toast.tsx').then(module => ({ default: module.Toast })));
 

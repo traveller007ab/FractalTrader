@@ -11,22 +11,10 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Secure CORS configuration
-const allowedOrigins = [process.env.FRONTEND_URL].filter(Boolean);
-if (process.env.NODE_ENV !== 'production') {
-    // Add common dev origins if not in production
-    allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
-}
-
+// Relaxed CORS configuration to allow requests from any origin.
+// This is suitable for development and environments where the frontend origin may vary.
 const corsOptions = {
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: "*",
     methods: ["GET", "POST"]
 };
 

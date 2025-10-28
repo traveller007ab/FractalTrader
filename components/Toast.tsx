@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-// Fix: Add .tsx extension to icons import
 import { CopyIcon, ChartIcon, XMarkIcon } from './icons.tsx';
 
 export const ToastContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (

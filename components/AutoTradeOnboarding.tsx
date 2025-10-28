@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { InformationCircleIcon, CheckIcon, ChevronDownIcon } from './icons';
+import { InformationCircleIcon, CheckIcon } from './icons.tsx';
 
 interface RiskSettings {
     maxPositions: number;

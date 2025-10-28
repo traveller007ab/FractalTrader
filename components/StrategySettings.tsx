@@ -50,7 +50,7 @@ const SettingInput: React.FC<{
                     onChange(name, val)
                 }
             }}
-            className="mt-1 block w-full bg-transparent border-0 border-b-2 border-border px-1 py-1.5 text-text-primary placeholder-text-muted focus:outline-none focus:ring-0 focus:border-accent transition-colors duration-200 text-sm"
+            className={`mt-1 block w-full bg-transparent border-0 border-b-2 px-1 py-1.5 text-text-primary placeholder-text-muted focus:outline-none focus:ring-0 focus:border-accent transition-colors duration-200 text-sm ${isInherited ? 'border-border/50' : 'border-border'}`}
         />
     </div>
 );

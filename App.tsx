@@ -166,6 +166,7 @@ function App() {
 
                     if (!isFocused) {
                         let isFlashing = false;
+                        if (titleIntervalRef.current) clearInterval(titleIntervalRef.current);
                         titleIntervalRef.current = window.setInterval(() => {
                             document.title = isFlashing ? 'SignalFlow' : `New Signal! | ${newSignal.symbol}`;
                             isFlashing = !isFlashing;

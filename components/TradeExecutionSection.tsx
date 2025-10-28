@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-// Fix: Import `Socket` type to enable explicit typing of the socket instance.
 import { io, Socket } from "socket.io-client";
 import type { Signal, LivePosition } from '../types';
-import { AutomationSetupModal } from './AutomationSetupModal';
-import { PositionsTable } from './PositionsTable';
-import { TradeQueueTable } from './TradeQueueTable';
-import { AnalyticsChart } from './AnalyticsChart';
+import { AutomationSetupModal } from './AutomationSetupModal.tsx';
+import { PositionsTable } from './PositionsTable.tsx';
+import { TradeQueueTable } from './TradeQueueTable.tsx';
+import { AnalyticsChart } from './AnalyticsChart.tsx';
 import { metaApi } from '../lib/metaApi';
 import { InformationCircleIcon } from './icons';
 import { useAppContext } from '../contexts/AppContext.tsx';
@@ -19,10 +18,13 @@ type AutomationStatus = 'manual' | 'auto' | 'paused';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
-// Fix: Define event types for type-safe socket communication.
+// Define event types for type-safe socket communication.
 interface ServerToClientEvents {
     positions_update: (positions: LivePosition[]) => void;
+    connect: () => void;
+    disconnect: () => void;
 }
+interface ClientToServerEvents {}
 
 const getInitialOnboardingStatus = (): boolean => {
     try {
@@ -61,8 +63,8 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
 
         fetchPositions();
 
-        // Fix: Explicitly type the socket to resolve errors with the `.on` method.
-        const socket: Socket<ServerToClientEvents> = io(BACKEND_URL);
+        const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(BACKEND_URL);
+
         socket.on('connect', () => {
             console.log('Connected to backend WebSocket.');
             setConnectionStatus('connected');

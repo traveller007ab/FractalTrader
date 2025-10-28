@@ -37,7 +37,7 @@ type TabId = 'strategy' | 'backtest' | 'trade';
 const tabs: { id: TabId, label: string, icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
     { id: 'strategy', label: 'Strategy', icon: ListBulletIcon },
     { id: 'backtest', label: 'Backtest', icon: BeakerIcon },
-    { id: 'trade', label: 'Auto Trade', icon: RobotIcon },
+    // { id: 'trade', label: 'Auto Trade', icon: RobotIcon }, // This feature is disabled as it requires a backend not available in this environment.
 ];
 
 export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
