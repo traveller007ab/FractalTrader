@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 // Fix: Add .tsx extension to App import
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { AppContextProvider } from './contexts/AppContext.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,7 +15,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <AppContextProvider>
+        <App />
+      </AppContextProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

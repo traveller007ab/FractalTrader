@@ -10,14 +10,31 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*", // Allow all origins for simplicity in this example
+
+// Secure CORS configuration
+const allowedOrigins = [process.env.FRONTEND_URL].filter(Boolean);
+if (process.env.NODE_ENV !== 'production') {
+    // Add common dev origins if not in production
+    allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
+}
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ["GET", "POST"]
-  }
+};
+
+const io = new Server(server, {
+  cors: corsOptions
 });
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Pass the io instance to the routes

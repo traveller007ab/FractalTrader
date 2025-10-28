@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { Signal, CopiedTrade } from '../types';
-import type { User } from '@supabase/supabase-js';
 import { SignalCard } from './SignalCard.tsx';
 import { RefreshIcon, SignalIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip.tsx';
 import { SignalFeedSkeleton } from './SignalFeedSkeleton.tsx';
+import { useAppContext } from '../contexts/AppContext.tsx';
 
 interface SignalFeedProps {
   signals: Signal[];
@@ -12,15 +12,14 @@ interface SignalFeedProps {
   onRefresh: () => void;
   loading: boolean;
   copiedTrades: CopiedTrade[];
-  user: User;
 }
 
-export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, onRefresh, loading, copiedTrades, user }) => {
+export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, onRefresh, loading, copiedTrades }) => {
+  const { user } = useAppContext();
   const [newSignalId, setNewSignalId] = useState<string | null>(null);
   
   useEffect(() => {
     if (signals.length > 0) {
-        // Simple way to detect a new signal is just checking the first one
         const latestSignal = signals[0];
         if (latestSignal.signal_id !== newSignalId) {
             setNewSignalId(latestSignal.signal_id);
@@ -32,7 +31,7 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
     if (loading && signals.length === 0) {
         return <SignalFeedSkeleton />;
     }
-    if (signals.length > 0) {
+    if (signals.length > 0 && user) {
         return (
             <table className="min-w-full divide-y divide-border table-fixed">
                 <thead className="bg-bg-secondary/80 sticky top-0 z-10 backdrop-blur-sm">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 // Fix: Add .tsx extension to icons import
 import { CopyIcon, ChartIcon, XMarkIcon } from './icons.tsx';
 
@@ -30,18 +30,17 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
     info: <ChartIcon className="w-5 h-5 text-sky-500" />,
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsClosing(true);
     setTimeout(() => {
       onClose();
     }, 300); // Duration of the fade-out animation
-  };
+  }, [onClose]);
 
   useEffect(() => {
-    // Automatically close after some time
     const timer = setTimeout(handleClose, 4700);
     return () => clearTimeout(timer);
-  }, []);
+  }, [handleClose]);
 
   return (
     <div className={`flex items-center justify-between max-w-xs p-4 bg-bg-secondary text-text-primary rounded-lg shadow-lg border border-border ${isClosing ? 'animate-fade-out-down' : 'animate-fade-in-up'}`}>

@@ -1,15 +1,37 @@
 import React from 'react';
-import type { Session } from '@supabase/supabase-js';
-// Fix: Add .tsx extension to icons import
+import { useAppContext } from '../contexts/AppContext.tsx';
 import { LogoIcon } from './icons.tsx';
 import { ThemeToggle } from './ThemeToggle.tsx';
+import { Tooltip } from './Tooltip.tsx';
 
 interface HeaderProps {
-  session: Session | null;
   onSignOut: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
+const ConnectionStatusIndicator: React.FC = () => {
+    const { connectionStatus } = useAppContext();
+
+    const statusMap = {
+        connected: { color: 'bg-success', tooltip: 'Live connection to trade server established.' },
+        disconnected: { color: 'bg-danger', tooltip: 'Disconnected from trade server. Data may be stale.' },
+        connecting: { color: 'bg-amber-500', tooltip: 'Connecting to trade server...' },
+    };
+
+    const { color, tooltip } = statusMap[connectionStatus];
+
+    return (
+        <Tooltip content={tooltip}>
+            <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full transition-colors ${color} ${connectionStatus !== 'connected' ? 'animate-pulse' : ''}`}></div>
+                <span className="text-xs font-mono hidden md:inline">{connectionStatus}</span>
+            </div>
+        </Tooltip>
+    );
+}
+
+export const Header: React.FC<HeaderProps> = ({ onSignOut }) => {
+  const { session } = useAppContext();
+
   return (
     <header className="bg-bg-secondary sticky top-0 z-40 border-b border-border shadow-md shadow-black/20">
       <div className="container mx-auto px-4 sm:px-6 lg:p-8">
@@ -21,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ session, onSignOut }) => {
           <div className="flex items-center gap-4">
             {session?.user && (
               <>
+                <ConnectionStatusIndicator />
                 <span className="text-sm font-mono text-text-secondary mr-2 hidden sm:block">{session.user.email}</span>
                 <ThemeToggle />
                 <button

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { StrategySettings as StrategySettingsType, FullStrategySettings } from '../types';
-import { ChevronDownIcon, CheckIcon, InformationCircleIcon, XMarkIcon } from './icons.tsx';
+import { ChevronDownIcon, CheckIcon, InformationCircleIcon, XMarkIcon, RefreshCcwIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip.tsx';
 import { TelegramIntegration } from './TelegramIntegration.tsx';
 import { strategyConfig } from '../lib/strategyRBSv2Config.ts';
@@ -13,14 +13,31 @@ interface StrategySettingsProps {
   onClearOptimizedSettings: () => void;
 }
 
-const SettingInput: React.FC<{ label: string, value: number, name: keyof StrategySettingsType, step: number, onChange: (name: keyof StrategySettingsType, value: number) => void, tooltip: string }> = 
-({ label, value, name, step, onChange, tooltip }) => (
+const SettingInput: React.FC<{ 
+    label: string, 
+    value: number, 
+    name: keyof StrategySettingsType, 
+    step: number, 
+    onChange: (name: keyof StrategySettingsType, value: number) => void, 
+    tooltip: string,
+    isInherited: boolean,
+    onReset?: () => void,
+}> = ({ label, value, name, step, onChange, tooltip, isInherited, onReset }) => (
     <div>
-        <label htmlFor={name} className="block text-xs font-medium text-text-secondary">
-             <Tooltip content={tooltip}>
-                <span className="cursor-help border-b border-dashed border-text-muted/50">{label}</span>
-            </Tooltip>
-        </label>
+        <div className="flex justify-between items-center">
+            <label htmlFor={name} className={`block text-xs font-medium ${isInherited ? 'text-text-muted' : 'text-text-secondary'}`}>
+                <Tooltip content={tooltip}>
+                    <span className="cursor-help border-b border-dashed border-text-muted/50">{label}</span>
+                </Tooltip>
+            </label>
+            {!isInherited && onReset && (
+                 <Tooltip content="Reset to base value">
+                    <button onClick={onReset} className="text-text-muted hover:text-accent transition-colors">
+                        <RefreshCcwIcon className="w-3 h-3" />
+                    </button>
+                 </Tooltip>
+            )}
+        </div>
         <input
             type="number"
             id={name}
@@ -106,14 +123,12 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
     const [showLogs, setShowLogs] = useState(false);
 
     useEffect(() => {
-        // If an optimization result arrives, switch the view to that symbol
         if (optimizedSettings) {
             setSelectedSymbol(optimizedSettings.symbol);
         }
     }, [optimizedSettings]);
     
     useEffect(() => {
-        // Update local form state when selected symbol or global settings change
         const currentSymbolSettings = settings.symbols[selectedSymbol] || {};
         const effectiveSettings = { ...settings.base, ...currentSymbolSettings };
         setLocalSettings(effectiveSettings);
@@ -133,6 +148,10 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
             onSettingsUpdate(optimizedSettings.symbol, optimizedSettings.settings);
         }
     }
+
+    const handleResetToDefault = (keyToReset: keyof StrategySettingsType) => {
+        setLocalSettings(prev => ({ ...prev, [keyToReset]: settings.base[keyToReset] }));
+    };
 
     const currentEffectiveSettings = { ...settings.base, ...(settings.symbols[optimizedSettings?.symbol || ''] || {}) };
 
@@ -164,12 +183,22 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
             </div>
 
              <div className="grid grid-cols-2 gap-4">
-                <SettingInput label="Risk %" value={localSettings.riskPercent} name="riskPercent" step={0.1} onChange={handleSettingChange} tooltip="Percentage of total equity to risk per trade."/>
-                <SettingInput label="R:R Ratio" value={localSettings.takeProfitR_R} name="takeProfitR_R" step={0.1} onChange={handleSettingChange} tooltip="Ratio of take profit distance to stop loss distance."/>
-                <SettingInput label="Stop Loss ATR" value={localSettings.stopLossAtrMultiplier} name="stopLossAtrMultiplier" step={0.1} onChange={handleSettingChange} tooltip="ATR multiplier for setting the stop loss."/>
-                <SettingInput label="SMA Period" value={localSettings.smaPeriod} name="smaPeriod" step={1} onChange={handleSettingChange} tooltip="Lookback period for the Simple Moving Average (SMA) for trend detection."/>
-                <SettingInput label="ATR Period" value={localSettings.atrPeriod} name="atrPeriod" step={1} onChange={handleSettingChange} tooltip="Lookback period for the Average True Range (ATR) calculation."/>
-                <SettingInput label="ATR Vol Filter" value={localSettings.atrFilterMultiplier} name="atrFilterMultiplier" step={0.05} onChange={handleSettingChange} tooltip="ATR must be above this multiple of median ATR to be considered volatile enough."/>
+                {(Object.keys(localSettings) as Array<keyof StrategySettingsType>).map(key => {
+                    const isInherited = selectedSymbol !== 'base' && !(settings.symbols[selectedSymbol] && key in settings.symbols[selectedSymbol]);
+                    return (
+                        <SettingInput
+                            key={key}
+                            label={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                            value={localSettings[key]}
+                            name={key}
+                            step={0.1} // This is a simplification, ideally step should be per-setting
+                            onChange={handleSettingChange}
+                            tooltip="A tooltip for this setting."
+                            isInherited={isInherited}
+                            onReset={isInherited ? undefined : () => handleResetToDefault(key)}
+                        />
+                    );
+                })}
              </div>
              
              <button onClick={handleSave} className="w-full mt-2 inline-flex justify-center items-center px-4 py-2 border border-border text-sm font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:cursor-not-allowed"

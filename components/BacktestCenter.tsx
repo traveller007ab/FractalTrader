@@ -26,6 +26,18 @@ interface BacktestCenterProps {
     optimizationProgress: string;
 }
 
+const EmptyQueueState: React.FC<{ onUploadClick: () => void }> = ({ onUploadClick }) => (
+    <div className="text-center p-6 bg-bg-primary/50 dark:bg-slate-900/50 rounded-lg border-2 border-dashed border-border">
+        <DocumentPlusIcon className="w-10 h-10 mx-auto text-text-muted" />
+        <h4 className="mt-2 text-sm font-semibold text-text-primary">Backtest Queue is Empty</h4>
+        <p className="mt-1 text-xs text-text-secondary">Upload CSV data files to begin a backtest or optimization run.</p>
+        <button onClick={onUploadClick} className="mt-4 inline-flex items-center px-3 py-1.5 border border-border text-xs font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-border">
+            Upload Data
+        </button>
+    </div>
+);
+
+
 export const BacktestCenter: React.FC<BacktestCenterProps> = ({ 
     files, setFiles, isBacktesting, setIsBacktesting, isOptimizing, 
     backtestProgress, setBacktestProgress, stopBacktestRef, onRunBacktest, 
@@ -194,7 +206,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                 </div>
             </div>
             
-            {files.length > 0 && (
+            {files.length > 0 ? (
                 <div className="space-y-3">
                     <div className="flex justify-between items-center">
                         <h3 className="text-md font-semibold text-text-primary">File Queue ({files.length})</h3>
@@ -253,6 +265,8 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                     </Tooltip>
                      <p className="text-xs text-text-muted text-center pt-1">Note: For best results, optimize for one symbol at a time.</p>
                 </div>
+            ) : (
+                 <EmptyQueueState onUploadClick={() => fileInputRef.current?.click()} />
             )}
             
             <hr className="border-border my-6" />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StrategySettings } from './StrategySettings.tsx';
 import { BacktestCenter } from './BacktestCenter.tsx';
 import { BeakerIcon, ListBulletIcon, RobotIcon } from './icons.tsx';
-import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, ToastMessage, FullStrategySettings } from '../types';
+import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, FullStrategySettings } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
 import { TradeExecutionSection } from './TradeExecutionSection.tsx';
 import { soundManager } from '../lib/soundManager.ts';
@@ -29,7 +29,6 @@ interface RightSidebarProps {
     optimizedSettings: { symbol: string, settings: StrategySettingsType } | null;
     onClearOptimizedSettings: () => void;
     signals: Signal[];
-    addToast: (message: string, type?: ToastMessage['type']) => void;
     optimizationProgress: string;
 }
 
@@ -121,7 +120,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
                     <div className="w-full h-full overflow-y-auto">
                         <TradeExecutionSection
                             signals={props.signals}
-                            addToast={props.addToast}
                         />
                     </div>
                 </div>

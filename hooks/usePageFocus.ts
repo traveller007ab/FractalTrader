@@ -1,17 +1,19 @@
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
-export function usePageFocus(onFocus: () => void) {
-    const handleVisibilityChange = useCallback(() => {
-        if (document.visibilityState === 'visible') {
-            onFocus();
-        }
-    }, [onFocus]);
+export function usePageFocus(): boolean {
+    const [isFocused, setIsFocused] = useState(document.visibilityState === 'visible');
 
     useEffect(() => {
+        const handleVisibilityChange = () => {
+            setIsFocused(document.visibilityState === 'visible');
+        };
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [handleVisibilityChange]);
+    }, []);
+
+    return isFocused;
 }

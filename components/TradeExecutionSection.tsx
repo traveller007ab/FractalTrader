@@ -1,28 +1,43 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { io } from "socket.io-client";
-import type { Signal, LivePosition, ToastMessage } from '../types';
+// Fix: Import `Socket` type to enable explicit typing of the socket instance.
+import { io, Socket } from "socket.io-client";
+import type { Signal, LivePosition } from '../types';
 import { AutomationSetupModal } from './AutomationSetupModal';
 import { PositionsTable } from './PositionsTable';
 import { TradeQueueTable } from './TradeQueueTable';
 import { AnalyticsChart } from './AnalyticsChart';
 import { metaApi } from '../lib/metaApi';
 import { InformationCircleIcon } from './icons';
+import { useAppContext } from '../contexts/AppContext.tsx';
+import { AutoTradeOnboarding } from './AutoTradeOnboarding.tsx';
 
 interface TradeExecutionSectionProps {
     signals: Signal[];
-    addToast: (message: string, type?: ToastMessage['type']) => void;
 }
 
 type AutomationStatus = 'manual' | 'auto' | 'paused';
 
-// NOTE: In a real deployment, this URL should come from an environment variable.
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
-export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ signals, addToast }) => {
+// Fix: Define event types for type-safe socket communication.
+interface ServerToClientEvents {
+    positions_update: (positions: LivePosition[]) => void;
+}
+
+const getInitialOnboardingStatus = (): boolean => {
+    try {
+        return localStorage.getItem('onboardingComplete') === 'true';
+    } catch {
+        return false;
+    }
+};
+
+export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ signals }) => {
+    const { addToast, setConnectionStatus } = useAppContext();
     const [automationStatus, setAutomationStatus] = useState<AutomationStatus>('manual');
     const [riskSettings, setRiskSettings] = useState({ maxPositions: 5, volumeCap: 0.1 });
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSetupComplete, setIsSetupComplete] = useState(false);
+    const [onboardingComplete, setOnboardingComplete] = useState(getInitialOnboardingStatus);
     const [pendingSignals, setPendingSignals] = useState<Signal[]>([]);
     const [livePositions, setLivePositions] = useState<LivePosition[]>([]);
     const [loadingPositions, setLoadingPositions] = useState(true);
@@ -41,30 +56,31 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
         }
     }, [addToast]);
     
-    // Initial fetch and WebSocket connection setup
     useEffect(() => {
-        fetchPositions(); // Initial fetch via REST
+        if (!onboardingComplete) return;
 
-        const socket = io(BACKEND_URL);
+        fetchPositions();
 
+        // Fix: Explicitly type the socket to resolve errors with the `.on` method.
+        const socket: Socket<ServerToClientEvents> = io(BACKEND_URL);
         socket.on('connect', () => {
             console.log('Connected to backend WebSocket.');
+            setConnectionStatus('connected');
         });
-        
-        // Listen for real-time position updates
         socket.on('positions_update', (positions: LivePosition[]) => {
             setLivePositions(positions);
             setLoadingPositions(false);
         });
-
         socket.on('disconnect', () => {
             console.log('Disconnected from backend WebSocket.');
+            setConnectionStatus('disconnected');
         });
 
         return () => {
             socket.disconnect();
+            setConnectionStatus('disconnected');
         };
-    }, [fetchPositions]);
+    }, [onboardingComplete, fetchPositions, setConnectionStatus]);
 
     const isRiskOk = useCallback((signal: Signal): boolean => {
         if (livePositions.length >= riskSettings.maxPositions) {
@@ -87,7 +103,6 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
                 addToast(`Trade Executed: ${signal.side.toUpperCase()} ${signal.symbol}`, 'success');
                 setExecutedSignalIds(prev => new Set(prev).add(signal.signal_id));
                 setPendingSignals(prev => prev.filter(s => s.signal_id !== signal.signal_id));
-                // Positions will update automatically via WebSocket
             } else {
                 throw new Error(result.message);
             }
@@ -97,54 +112,57 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
     }, [addToast, isRiskOk]);
 
     useEffect(() => {
-        // Find new signals that are not yet pending or executed
+        if (!onboardingComplete) return;
+
         const newSignals = signals.filter(s => 
             !pendingSignals.some(ps => ps.signal_id === s.signal_id) &&
             !executedSignalIds.has(s.signal_id)
         );
         
         if (newSignals.length > 0) {
-            setPendingSignals(prev => [...newSignals, ...prev].slice(0, 10)); // Add new signals to the front, keep last 10
-            
+            setPendingSignals(prev => [...newSignals, ...prev].slice(0, 10));
             if (automationStatus === 'auto') {
                 for (const signal of newSignals) {
                     handleExecuteSignal(signal);
                 }
             }
         }
-    }, [signals, automationStatus, pendingSignals, executedSignalIds, handleExecuteSignal]);
+    }, [signals, automationStatus, pendingSignals, executedSignalIds, handleExecuteSignal, onboardingComplete]);
 
     const handleClosePosition = async (positionId: string) => {
         try {
             const result = await metaApi.closePosition(positionId);
-            if (result.success) {
-                addToast("Position closed successfully.", "success");
-                // Position list will update via WebSocket
-            } else {
-                throw new Error(result.message);
-            }
+            if (result.success) addToast("Position closed successfully.", "success");
+            else throw new Error(result.message);
         } catch (error: any) {
             addToast(`Failed to close position: ${error.message}`, "error");
         }
     };
     
-    const pnlHistory = useMemo(() => {
-        let cumulativePnl = 0;
-        // The backend only sends open positions, so PnL chart is not applicable in this live model
-        // We'll leave the component here for potential future use with historical trade data.
-        return [];
-    }, []);
-
+    const pnlHistory = useMemo(() => [], []);
 
     const handleStatusChange = (status: AutomationStatus) => {
-        if(status === 'auto' && !isSetupComplete) {
-            addToast('Please complete the risk setup first.', 'info');
-            setIsModalOpen(true);
+        if (status === 'auto' && !onboardingComplete) {
+            addToast('Please complete the setup first.', 'info');
             return;
         }
         setAutomationStatus(status);
         addToast(`Automation mode set to: ${status.toUpperCase()}`, 'info');
     };
+    
+    const handleOnboardingComplete = (settings: { maxPositions: number; volumeCap: number; }) => {
+        setRiskSettings(settings);
+        setOnboardingComplete(true);
+        try {
+            localStorage.setItem('onboardingComplete', 'true');
+        } catch {}
+        setAutomationStatus('auto');
+        addToast('Risk settings saved. Automation is now ACTIVE.', 'success');
+    };
+
+    if (!onboardingComplete) {
+        return <AutoTradeOnboarding onComplete={handleOnboardingComplete} />;
+    }
 
     return (
         <div className="p-4 space-y-6">
@@ -154,9 +172,8 @@ export const TradeExecutionSection: React.FC<TradeExecutionSectionProps> = ({ si
                 onSave={(settings) => {
                     setRiskSettings(settings);
                     setIsModalOpen(false);
-                    setIsSetupComplete(true);
                     setAutomationStatus('auto');
-                     addToast('Risk settings saved. Automation is now ACTIVE.', 'success');
+                    addToast('Risk settings updated. Automation is ACTIVE.', 'success');
                 }}
                 currentSettings={riskSettings}
             />
