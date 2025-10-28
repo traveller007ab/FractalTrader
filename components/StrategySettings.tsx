@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import type { StrategySettings as StrategySettingsType, FullStrategySettings } from '../types';
-import { ChevronDownIcon, CheckIcon, InformationCircleIcon, XMarkIcon, RefreshCcwIcon } from './icons.tsx';
+import type { StrategySettings as StrategySettingsType, FullStrategySettings, BacktestMetrics } from '../types';
+import { ChevronDownIcon, CheckIcon, InformationCircleIcon, XMarkIcon, RefreshCcwIcon, ChevronUpIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip.tsx';
 import { TelegramIntegration } from './TelegramIntegration.tsx';
 import { strategyConfig } from '../lib/strategyRBSv2Config.ts';
+import { AnimatedNumber } from './AnimatedNumber.tsx';
 
 interface StrategySettingsProps {
   settings: FullStrategySettings;
   onSettingsUpdate: (symbol: string, settings: StrategySettingsType) => void;
   logs: string[];
-  optimizedSettings: { symbol: string, settings: StrategySettingsType } | null;
+  optimizedSettings: { 
+    symbol: string, 
+    settings: StrategySettingsType,
+    baselineMetrics: BacktestMetrics,
+    optimizedMetrics: BacktestMetrics
+  } | null;
   onClearOptimizedSettings: () => void;
 }
 
@@ -55,54 +61,63 @@ const SettingInput: React.FC<{
     </div>
 );
 
+const MetricDisplay: React.FC<{ label: string, baseline: number, optimized: number, formatter: (val: number) => string }> = ({ label, baseline, optimized, formatter }) => {
+    const diff = optimized - baseline;
+    const isImprovement = (label.includes("Drawdown") ? diff < 0 : diff > 0);
 
-const OptimizationResults: React.FC<{current: StrategySettingsType, proposed: StrategySettingsType, onSave: () => void, onDiscard: () => void, symbol: string}> = ({ current, proposed, onSave, onDiscard, symbol }) => {
-    
-    const changes = (Object.keys(proposed) as Array<keyof StrategySettingsType>).map(key => {
-        const oldValue = current[key];
-        const newValue = proposed[key];
+    return (
+        <div className="flex justify-between items-center text-sm py-2 px-3 bg-bg-primary/50 rounded">
+            <span className="text-text-secondary">{label}</span>
+            <div className="flex items-center gap-2 font-mono">
+                <span className="text-text-muted w-20 text-right">{formatter(baseline)}</span>
+                <span className={`font-semibold w-24 text-right ${isImprovement ? 'text-success' : 'text-danger'}`}>
+                    {formatter(optimized)}
+                </span>
+                <div className={`flex items-center w-24 ${diff === 0 ? 'text-text-muted' : isImprovement ? 'text-success' : 'text-danger'}`}>
+                    {diff !== 0 && (isImprovement ? <ChevronUpIcon className="w-4 h-4"/> : <ChevronDownIcon className="w-4 h-4"/>)}
+                    <span className="text-xs">{formatter(diff)}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-        let areDifferent = false;
-        if (typeof oldValue === 'number' && typeof newValue === 'number') {
-            areDifferent = oldValue.toFixed(4) !== newValue.toFixed(4);
-        } else {
-            areDifferent = oldValue !== newValue;
-        }
+const OptimizationResults: React.FC<{
+    onSave: () => void;
+    onDiscard: () => void;
+    symbol: string;
+    baselineMetrics: BacktestMetrics;
+    optimizedMetrics: BacktestMetrics;
+}> = ({ onSave, onDiscard, symbol, baselineMetrics, optimizedMetrics }) => {
 
-        if (!areDifferent) return null;
-
-        return {
-            key,
-            label: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
-            oldValue,
-            newValue
-        };
-    }).filter(Boolean);
+    const formatters = {
+        currency: (v: number) => `$${v.toFixed(2)}`,
+        percent: (v: number) => `${v.toFixed(1)}%`,
+        decimal: (v: number) => v.toFixed(2),
+    };
 
     return (
         <div className="bg-accent/10 p-4 rounded-lg border-2 border-accent/50 space-y-3 mb-6 animate-fade-in-up">
-            <div className="flex items-center gap-3">
-                <InformationCircleIcon className="w-6 h-6 text-accent flex-shrink-0"/>
+            <div className="flex items-start gap-3">
+                <InformationCircleIcon className="w-8 h-8 text-accent flex-shrink-0"/>
                 <div>
-                    <h3 className="text-md font-semibold text-text-primary">Optimization Results for {symbol}</h3>
-                    <p className="text-xs text-text-secondary">A better configuration was found. Review the changes below.</p>
+                    <h3 className="text-md font-semibold text-text-primary">Optimization Found for {symbol}</h3>
+                    <p className="text-xs text-text-secondary">A potentially better configuration was found. Review the performance impact below before applying.</p>
                 </div>
             </div>
-            <div className="space-y-2 text-sm">
-                {changes.map(change => (
-                    <div key={change!.key} className="flex justify-between items-center bg-bg-primary/50 dark:bg-slate-800/50 p-2 rounded">
-                        <span className="text-text-secondary">{change!.label}</span>
-                        <div className="text-right">
-                            <span className="text-red-500/80 line-through mr-2 font-mono">
-                                {typeof change!.oldValue === 'number' ? change!.oldValue.toFixed(2) : 'N/A'}
-                            </span>
-                            <span className="text-emerald-500 font-mono">
-                                {typeof change!.newValue === 'number' ? change!.newValue.toFixed(2) : 'N/A'}
-                            </span>
-                        </div>
-                    </div>
-                ))}
+            
+            <div className="space-y-1.5 text-sm">
+                <div className="flex justify-end items-center text-xs font-semibold text-text-muted pr-4">
+                    <span className="w-20 text-right">Baseline</span>
+                    <span className="w-24 text-right">Optimized</span>
+                    <span className="w-24 text-center">Change</span>
+                </div>
+                <MetricDisplay label="Total P&L" baseline={baselineMetrics.total_pnl} optimized={optimizedMetrics.total_pnl} formatter={formatters.currency} />
+                <MetricDisplay label="Win Rate" baseline={baselineMetrics.win_rate} optimized={optimizedMetrics.win_rate} formatter={formatters.percent} />
+                <MetricDisplay label="Profit Factor" baseline={baselineMetrics.profit_factor} optimized={optimizedMetrics.profit_factor} formatter={formatters.decimal} />
+                <MetricDisplay label="Max Drawdown" baseline={baselineMetrics.max_drawdown} optimized={optimizedMetrics.max_drawdown} formatter={formatters.percent} />
             </div>
+
             <div className="flex gap-2 pt-2">
                 <button onClick={onSave} className="w-full inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover">
                     <CheckIcon className="w-5 h-5 mr-2"/> Apply & Save
@@ -153,17 +168,15 @@ export const StrategySettings: React.FC<StrategySettingsProps> = ({ settings, on
         setLocalSettings(prev => ({ ...prev, [keyToReset]: settings.base[keyToReset] }));
     };
 
-    const currentEffectiveSettings = { ...settings.base, ...(settings.symbols[optimizedSettings?.symbol || ''] || {}) };
-
   return (
     <div className="p-4 space-y-6">
         {optimizedSettings && (
             <OptimizationResults 
-                current={currentEffectiveSettings} 
-                proposed={optimizedSettings.settings} 
                 onSave={handleApplyOptimized} 
                 onDiscard={onClearOptimizedSettings}
                 symbol={optimizedSettings.symbol}
+                baselineMetrics={optimizedSettings.baselineMetrics}
+                optimizedMetrics={optimizedSettings.optimizedMetrics}
             />
         )}
         <fieldset disabled={!!optimizedSettings} className="space-y-4 disabled:opacity-50">

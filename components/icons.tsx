@@ -131,3 +131,8 @@ export const RefreshCcwIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) =
         <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/>
     </svg>
 );
+export const ChevronUpIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+    </svg>
+  );

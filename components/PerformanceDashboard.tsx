@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import type { CopiedTrade, BacktestRun, PnlDataPoint } from '../types';
+import type { CopiedTrade, BacktestRun, PnlDataPoint, BacktestTrade } from '../types';
 import { AnalyticsChart } from './AnalyticsChart';
 import { AnimatedNumber } from './AnimatedNumber';
-import { ChartIcon, XMarkIcon } from './icons';
-import { Tooltip } from './Tooltip';
+import { ChartIcon, XMarkIcon, ListBulletIcon } from './icons.tsx';
+import { Tooltip } from './Tooltip.tsx';
 
 interface PerformanceDashboardProps {
   copiedTrades: CopiedTrade[];
@@ -21,6 +21,7 @@ interface DisplayMetrics {
     runs?: number;
     profit_factor?: number;
     max_drawdown?: number;
+    tradeLog?: BacktestTrade[];
 }
 
 const StatCardComponent: React.FC<{ title: string; value: number | undefined; formatter: (val: number) => string; tooltip: string }> = ({ title, value, formatter, tooltip }) => (
@@ -34,6 +35,59 @@ const StatCardComponent: React.FC<{ title: string; value: number | undefined; fo
   </div>
 );
 const StatCard = React.memo(StatCardComponent);
+
+const BacktestTradeLog: React.FC<{ trades: BacktestTrade[] }> = ({ trades }) => {
+    if (!trades || trades.length === 0) {
+        return (
+            <div className="text-center text-sm text-text-muted py-8">
+                No individual trades were recorded for this backtest.
+            </div>
+        );
+    }
+
+    const formatDateTime = (isoString: string | undefined) => {
+        if (!isoString) return 'N/A';
+        const date = new Date(isoString);
+        return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    };
+
+    const formatPrice = (price: number | undefined) => {
+        if (price === undefined) return 'N/A';
+        return price.toFixed(price > 100 ? 2 : 4);
+    };
+
+    return (
+        <div className="mt-4 max-h-80 overflow-y-auto scroll-gutter-stable bg-bg-primary/50 rounded-lg border border-border">
+            <table className="min-w-full divide-y divide-border">
+                <thead className="bg-bg-secondary/50 sticky top-0 backdrop-blur-sm z-10">
+                    <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Side</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Entry Time</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Exit Time</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Entry Price</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Exit Price</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-text-muted uppercase tracking-wider">P&L ($)</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                    {trades.map((trade, index) => (
+                        <tr key={index} className="hover:bg-border/40">
+                            <td className={`px-3 py-2 text-xs font-semibold whitespace-nowrap ${trade.side === 'buy' ? 'text-success' : 'text-danger'}`}>{trade.side.toUpperCase()}</td>
+                            <td className="px-3 py-2 text-xs text-text-secondary whitespace-nowrap font-mono">{formatDateTime(trade.entry_datetime)}</td>
+                            <td className="px-3 py-2 text-xs text-text-secondary whitespace-nowrap font-mono">{formatDateTime(trade.exit_datetime)}</td>
+                            <td className="px-3 py-2 text-xs text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(trade.entry_price)}</td>
+                            <td className="px-3 py-2 text-xs text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(trade.exit_price)}</td>
+                            <td className={`px-3 py-2 text-xs font-semibold whitespace-nowrap font-mono text-right ${trade.pnl && trade.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+                                {trade.pnl?.toFixed(2)}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
 
 export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copiedTrades, sessionBacktestRuns, activeBacktest, onClearActiveBacktest }) => {
   const [activeTab, setActiveTab] = useState<'live' | 'backtest'>('live');
@@ -91,6 +145,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
         profit_factor: metrics.profit_factor,
         max_drawdown: metrics.max_drawdown,
         pnlHistory: metrics.pnl_history || [],
+        tradeLog: metrics.trades || [],
         // Fix: Removed `as any` cast as `params` is now typed as `any`.
         fileName: activeBacktest.params?.symbol || 'Focused Run'
     };
@@ -170,6 +225,15 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
             </div>
          )}
       </div>
+      {focusedBacktestMetrics && focusedBacktestMetrics.tradeLog && (
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center gap-2 mb-3">
+             <ListBulletIcon className="w-5 h-5 text-text-secondary" />
+            <h3 className="font-semibold text-text-primary">Focused Run: Trade Log ({focusedBacktestMetrics.tradeLog.length} trades)</h3>
+          </div>
+          <BacktestTradeLog trades={focusedBacktestMetrics.tradeLog} />
+        </div>
+      )}
     </div>
   );
 };

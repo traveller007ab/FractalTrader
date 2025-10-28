@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { StrategySettings } from './StrategySettings.tsx';
 import { BacktestCenter } from './BacktestCenter.tsx';
 import { BeakerIcon, ListBulletIcon, RobotIcon } from './icons.tsx';
-import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, FullStrategySettings } from '../types';
+// Fix: Import BacktestMetrics to correctly type the optimizedSettings prop.
+import type { StrategySettings as StrategySettingsType, BacktestRun, Signal, FullStrategySettings, BacktestMetrics } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
 import { TradeExecutionSection } from './TradeExecutionSection.tsx';
 import { soundManager } from '../lib/soundManager.ts';
@@ -20,16 +21,24 @@ interface RightSidebarProps {
     setBacktestProgress: React.Dispatch<React.SetStateAction<{ current: number, total: number }>>;
     stopBacktestRef: React.MutableRefObject<boolean>;
     onRunBacktest: (file: File, parsedData: any[]) => Promise<void>;
-    onOptimize: (files: OptimizationData[]) => void;
+    // Fix: Correct the 'onOptimize' prop signature to accept both files and parameters.
+    onOptimize: (files: OptimizationData[], paramsToOptimize: (keyof StrategySettingsType)[]) => void;
     onSessionStart: () => void;
     recentBacktests: BacktestRun[];
     onViewBacktest: (run: BacktestRun) => void;
     optimizationState: { fileId: string | null; count: number };
     onClearFiles: () => void;
-    optimizedSettings: { symbol: string, settings: StrategySettingsType } | null;
+    // Fix: Update 'optimizedSettings' to include the full metrics object required by child components.
+    optimizedSettings: { 
+        symbol: string, 
+        settings: StrategySettingsType,
+        baselineMetrics: BacktestMetrics,
+        optimizedMetrics: BacktestMetrics,
+    } | null;
     onClearOptimizedSettings: () => void;
     signals: Signal[];
-    optimizationProgress: string;
+    // Fix: Correct the 'optimizationProgress' prop type from a simple string to its actual object structure.
+    optimizationProgress: { text: string; evolution: number[] };
 }
 
 type TabId = 'strategy' | 'backtest' | 'trade';

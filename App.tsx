@@ -13,7 +13,7 @@ import { getSymbolFromFilename } from './lib/utils.ts';
 import { usePageFocus } from './hooks/usePageFocus.ts';
 import { soundManager } from './lib/soundManager.ts';
 import { useAppContext } from './contexts/AppContext.tsx';
-import type { Signal, CopiedTrade, StrategySettings, BacktestRun, TimeSeriesData, FullStrategySettings } from './types.ts';
+import type { Signal, CopiedTrade, StrategySettings, BacktestRun, TimeSeriesData, FullStrategySettings, BacktestMetrics } from './types.ts';
 
 export interface FileWithStatus {
   file: File;
@@ -26,6 +26,14 @@ export interface OptimizationData {
     data: TimeSeriesData[];
 }
 
+// Type for the state holding optimization results
+type OptimizationResultState = {
+    symbol: string;
+    settings: StrategySettings;
+    baselineMetrics: BacktestMetrics;
+    optimizedMetrics: BacktestMetrics;
+} | null;
+
 function App() {
     const { session, setSession, user, setUser, addToast } = useAppContext();
     const [signals, setSignals] = useState<Signal[]>([]);
@@ -34,7 +42,7 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [strategySettings, setStrategySettings] = useState<FullStrategySettings>(strategyConfig);
     const [engineLogs, setEngineLogs] = useState<string[]>([]);
-    const [optimizedSettings, setOptimizedSettings] = useState<{ symbol: string; settings: StrategySettings } | null>(null);
+    const [optimizedSettings, setOptimizedSettings] = useState<OptimizationResultState>(null);
     
     const [files, setFiles] = useState<FileWithStatus[]>([]);
     const [isBacktesting, setIsBacktesting] = useState(false);
@@ -45,7 +53,7 @@ function App() {
     const [sessionBacktestRuns, setSessionBacktestRuns] = useState<BacktestRun[]>([]);
     const [activeBacktest, setActiveBacktest] = useState<BacktestRun | null>(null);
     const [optimizationState, setOptimizationState] = useState<{fileId: string | null; count: number}>({ fileId: null, count: 0 });
-    const [optimizationProgress, setOptimizationProgress] = useState('');
+    const [optimizationProgress, setOptimizationProgress] = useState({ text: '', evolution: [] as number[] });
     
     const isFocused = usePageFocus();
     const titleIntervalRef = useRef<number | null>(null);
@@ -300,25 +308,34 @@ function App() {
         }
     };
     
-    const handleOptimize = async (filesToOptimize: OptimizationData[]) => {
+    const handleOptimize = async (filesToOptimize: OptimizationData[], paramsToOptimize: (keyof StrategySettings)[]) => {
       if (!user || filesToOptimize.length === 0) return;
       setIsOptimizing(true);
       setOptimizedSettings(null);
-      setOptimizationProgress('');
+      setOptimizationProgress({ text: 'Initializing...', evolution: [] });
       
       const symbolToOptimize = getSymbolFromFilename(filesToOptimize[0].file.name);
-      addToast(`Optimizing for ${symbolToOptimize}... This may take a moment.`, 'info');
+      addToast(`Optimizing ${paramsToOptimize.length} parameters for ${symbolToOptimize}...`, 'info');
       
       try {
-        const optimizer = new Optimizer(filesToOptimize, strategySettings, symbolToOptimize);
+        const optimizer = new Optimizer(filesToOptimize, strategySettings, symbolToOptimize, paramsToOptimize);
         optimizer.onProgress(({ generation, totalGenerations, bestScore }) => {
-            setOptimizationProgress(`Gen ${generation}/${totalGenerations} | Best Score: ${bestScore.toFixed(2)}`);
+            setOptimizationProgress(prev => ({
+                text: `Gen ${generation}/${totalGenerations} | Best Score: ${bestScore.toFixed(2)}`,
+                evolution: [...prev.evolution, bestScore]
+            }));
         });
 
-        const bestSettings = await optimizer.run();
+        const result = await optimizer.run();
 
-        if(bestSettings) {
-            setOptimizedSettings({ symbol: symbolToOptimize, settings: bestSettings });
+        if(result) {
+            setOptimizedSettings({ 
+                symbol: symbolToOptimize, 
+                settings: result.bestSettings,
+                baselineMetrics: result.baselineMetrics,
+                optimizedMetrics: result.optimizedMetrics
+            });
+            soundManager.play('success');
             addToast('Optimization complete! Review the new settings.', 'success');
         } else {
             addToast(`Optimization could not find a better configuration for ${symbolToOptimize}.`, 'info');
@@ -328,7 +345,7 @@ function App() {
         addToast(`Optimization failed: ${message}`, 'error');
       } finally {
         setIsOptimizing(false);
-        setOptimizationProgress('');
+        setOptimizationProgress({ text: '', evolution: [] });
       }
     }
 
@@ -347,7 +364,7 @@ function App() {
             <Header onSignOut={() => supabase.auth.signOut()} />
             <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow overflow-hidden">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_26rem] gap-6 h-full">
-                    <div className="space-y-6 animate-fade-in-up overflow-y-auto pr-2" style={{ animationDelay: '200ms' }}>
+                    <div className="space-y-6 animate-fade-in-up overflow-y-auto pr-2 scroll-gutter-stable" style={{ animationDelay: '200ms' }}>
                         <PerformanceDashboard 
                             copiedTrades={copiedTrades}
                             sessionBacktestRuns={sessionBacktestRuns}

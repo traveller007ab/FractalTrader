@@ -1,20 +1,26 @@
 import { runBacktestFromData } from './backtester.ts';
-import { getSymbolFromFilename } from './utils.ts';
 import type { StrategySettings, TimeSeriesData, BacktestMetrics, FullStrategySettings } from '../types.ts';
 
 const POPULATION_SIZE = 30;
-const GENERATIONS = 15;
-const MUTATION_RATE = 0.15;
-const ELITISM_COUNT = 2; // Keep the best N individuals from the previous generation
+const GENERATIONS = 20;
+const MUTATION_RATE = 0.20;
+const ELITISM_COUNT = 3; 
 
-type OptimizableParams = 'smaPeriod' | 'stopLossAtrMultiplier' | 'takeProfitR_R' | 'riskPercent' | 'atrFilterMultiplier';
+type OptimizableParams = keyof typeof PARAM_RANGES;
 
-const PARAM_RANGES: Record<OptimizableParams, { min: number, max: number, step: number }> = {
-    smaPeriod: { min: 10, max: 50, step: 1 },
-    stopLossAtrMultiplier: { min: 1.0, max: 3.5, step: 0.1 },
-    takeProfitR_R: { min: 1.5, max: 4.0, step: 0.1 },
-    riskPercent: { min: 0.25, max: 1.5, step: 0.05 },
-    atrFilterMultiplier: { min: 0.5, max: 1.25, step: 0.05 },
+const PARAM_RANGES = {
+    shiftAtrMultiplier: { min: 0.1, max: 0.8, step: 0.05 },
+    smaPeriod: { min: 10, max: 60, step: 1 },
+    proximityAtrMultiplier: { min: 0.3, max: 1.5, step: 0.1 },
+    atrPeriod: { min: 10, max: 30, step: 1 },
+    atrFilterMultiplier: { min: 0.5, max: 1.5, step: 0.05 },
+    volumeFilterMultiplier: { min: 1.5, max: 4.0, step: 0.1 },
+    stopLossAtrMultiplier: { min: 1.0, max: 4.0, step: 0.1 },
+    takeProfitR_R: { min: 1.5, max: 5.0, step: 0.1 },
+    riskPercent: { min: 0.25, max: 2.0, step: 0.05 },
+    confidenceThreshold: { min: 0.55, max: 0.80, step: 0.01 },
+    cooldownBars: { min: 3, max: 12, step: 1 },
+    duplicateThresholdPct: { min: 0.001, max: 0.005, step: 0.0005 },
 };
 
 export class Optimizer {
@@ -23,56 +29,59 @@ export class Optimizer {
     private onProgressCallback: ((progress: { generation: number, totalGenerations: number, bestScore: number }) => void) | null = null;
     private fullSettings: FullStrategySettings;
     private symbol: string;
+    private paramsToOptimize: OptimizableParams[];
 
     constructor(
         datasets: { file: File, data: TimeSeriesData[] }[],
         fullSettings: FullStrategySettings,
-        symbol: string
+        symbol: string,
+        paramsToOptimize: (keyof StrategySettings)[]
     ) {
         this.datasets = datasets.map(d => ({ ...d, symbol }));
         this.fullSettings = fullSettings;
         this.symbol = symbol;
-        // The baseline for optimization is the specific setting for this symbol
         this.baselineSettings = { ...fullSettings.base, ...(fullSettings.symbols[symbol] || {}) };
+        this.paramsToOptimize = paramsToOptimize as OptimizableParams[];
     }
 
     public onProgress(callback: (progress: { generation: number, totalGenerations: number, bestScore: number }) => void) {
         this.onProgressCallback = callback;
     }
 
-    private async evaluateSettings(settings: StrategySettings): Promise<number> {
+    private async evaluateSettings(settings: StrategySettings): Promise<{ metrics: BacktestMetrics, score: number }> {
         const tempFullSettings: FullStrategySettings = JSON.parse(JSON.stringify(this.fullSettings));
-        tempFullSettings.symbols[this.symbol] = settings;
+        tempFullSettings.symbols[this.symbol] = { ...tempFullSettings.symbols[this.symbol], ...settings};
         
         const runResults = await Promise.all(this.datasets.map(dataset => 
             runBacktestFromData(dataset.data, tempFullSettings, dataset.symbol)
         ));
 
         const validRuns = runResults.filter(r => r.metrics && r.metrics.total_trades > 5);
-        if (validRuns.length !== this.datasets.length) return -Infinity;
+        if (validRuns.length === 0) return { metrics: {} as BacktestMetrics, score: -Infinity };
 
-        const totalPnl = validRuns.reduce((sum, r) => sum + r.metrics.total_pnl, 0);
-        const grossProfit = validRuns.reduce((sum, r) => sum + (r.metrics.grossProfit || 0), 0);
-        const grossLoss = validRuns.reduce((sum, r) => sum + (r.metrics.grossLoss || 0), 0);
-        const maxDrawdown = Math.max(...validRuns.map(r => r.metrics.max_drawdown));
+        const aggregateMetrics: BacktestMetrics = {
+            total_pnl: validRuns.reduce((sum, r) => sum + r.metrics.total_pnl, 0),
+            win_rate: validRuns.reduce((sum, r) => sum + r.metrics.win_rate, 0) / validRuns.length,
+            max_drawdown: Math.max(...validRuns.map(r => r.metrics.max_drawdown)),
+            profit_factor: validRuns.reduce((sum, r) => sum + r.metrics.profit_factor, 0) / validRuns.length,
+            total_trades: validRuns.reduce((sum, r) => sum + r.metrics.total_trades, 0)
+        };
+        
+        if (aggregateMetrics.total_trades < 10) return { metrics: aggregateMetrics, score: -Infinity };
 
-        const profitableRunsRatio = validRuns.filter(r => r.metrics.total_pnl > 0).length / validRuns.length;
-        if (profitableRunsRatio < 0.6) return -Infinity; // Require at least 60% of runs to be profitable
-
-        const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? 9999 : 1);
-
-        const score = (totalPnl * profitFactor * profitableRunsRatio) / (1 + (maxDrawdown / 100));
-        return isNaN(score) ? -Infinity : score;
+        // Fitness function: P&L * Profit Factor / (1 + Max Drawdown %)
+        const score = (aggregateMetrics.total_pnl * aggregateMetrics.profit_factor) / (1 + (aggregateMetrics.max_drawdown / 100));
+        return { metrics: aggregateMetrics, score: isNaN(score) ? -Infinity : score };
     }
 
     private initializePopulation(): StrategySettings[] {
         const population: StrategySettings[] = [this.baselineSettings]; // Always include the baseline
         while (population.length < POPULATION_SIZE) {
             const individual = { ...this.baselineSettings };
-            for (const key of Object.keys(PARAM_RANGES) as OptimizableParams[]) {
+            for (const key of this.paramsToOptimize) {
                 const range = PARAM_RANGES[key];
                 const randomVal = range.min + Math.random() * (range.max - range.min);
-                individual[key] = parseFloat((Math.round(randomVal / range.step) * range.step).toFixed(4));
+                (individual as any)[key] = parseFloat((Math.round(randomVal / range.step) * range.step).toFixed(4));
             }
             population.push(individual);
         }
@@ -80,7 +89,6 @@ export class Optimizer {
     }
 
     private selection(scoredPopulation: { settings: StrategySettings, score: number }[]): StrategySettings[] {
-        // Tournament Selection
         const parents: StrategySettings[] = [];
         for (let i = 0; i < POPULATION_SIZE; i++) {
             const p1_idx = Math.floor(Math.random() * POPULATION_SIZE);
@@ -93,10 +101,9 @@ export class Optimizer {
 
     private crossover(parent1: StrategySettings, parent2: StrategySettings): StrategySettings {
         const child = { ...parent1 };
-        const keys = Object.keys(PARAM_RANGES) as OptimizableParams[];
-        for (const key of keys) {
+        for (const key of this.paramsToOptimize) {
             if (Math.random() < 0.5) {
-                child[key] = parent2[key];
+                (child as any)[key] = (parent2 as any)[key];
             }
         }
         return child;
@@ -104,46 +111,49 @@ export class Optimizer {
     
     private mutate(individual: StrategySettings): StrategySettings {
         const mutated = { ...individual };
-        const keys = Object.keys(PARAM_RANGES) as OptimizableParams[];
-        for (const key of keys) {
+        for (const key of this.paramsToOptimize) {
             if (Math.random() < MUTATION_RATE) {
                 const range = PARAM_RANGES[key];
-                const change = (Math.random() - 0.5) * (range.max - range.min) * 0.1; // Mutate by up to 10% of range
-                let newValue = mutated[key] + change;
-                newValue = Math.max(range.min, Math.min(range.max, newValue)); // Clamp within bounds
-                mutated[key] = parseFloat((Math.round(newValue / range.step) * range.step).toFixed(4));
+                const change = (Math.random() - 0.5) * (range.max - range.min) * 0.1; 
+                let newValue = (mutated as any)[key] + change;
+                newValue = Math.max(range.min, Math.min(range.max, newValue)); 
+                (mutated as any)[key] = parseFloat((Math.round(newValue / range.step) * range.step).toFixed(4));
             }
         }
         return mutated;
     }
 
-    public async run(): Promise<StrategySettings | null> {
+    public async run(): Promise<{ bestSettings: StrategySettings, baselineMetrics: BacktestMetrics, optimizedMetrics: BacktestMetrics } | null> {
         let population = this.initializePopulation();
-        let bestOverall: { settings: StrategySettings, score: number } | null = null;
+        let bestOverall: { settings: StrategySettings, metrics: BacktestMetrics, score: number } | null = null;
         
         for (let gen = 0; gen < GENERATIONS; gen++) {
             const scoredPopulation = await Promise.all(
-                population.map(async individual => ({
-                    settings: individual,
-                    score: await this.evaluateSettings(individual)
-                }))
+                population.map(async individual => {
+                    const { metrics, score } = await this.evaluateSettings(individual);
+                    return { settings: individual, metrics, score };
+                })
             );
             
             scoredPopulation.sort((a, b) => b.score - a.score);
 
             const currentBest = scoredPopulation[0];
-            if (!bestOverall || currentBest.score > bestOverall.score) {
+            if (!bestOverall || (currentBest && currentBest.score > bestOverall.score)) {
                 bestOverall = currentBest;
             }
 
-            if (this.onProgressCallback) {
-                this.onProgressCallback({ generation: gen + 1, totalGenerations: GENERATIONS, bestScore: bestOverall?.score ?? 0 });
+            if (this.onProgressCallback && bestOverall) {
+                this.onProgressCallback({ generation: gen + 1, totalGenerations: GENERATIONS, bestScore: bestOverall.score });
             }
 
             if (gen === GENERATIONS - 1) break;
 
             const elite = scoredPopulation.slice(0, ELITISM_COUNT).map(s => s.settings);
-            const parents = this.selection(scoredPopulation);
+            const parents = this.selection(scoredPopulation.filter(p => isFinite(p.score)));
+            if (parents.length === 0) { // All individuals might have failed
+                population = this.initializePopulation(); // Re-initialize
+                continue;
+            }
             const newPopulation: StrategySettings[] = [...elite];
 
             while (newPopulation.length < POPULATION_SIZE) {
@@ -156,11 +166,15 @@ export class Optimizer {
             population = newPopulation;
         }
 
-        const baselineScore = await this.evaluateSettings(this.baselineSettings);
-        if (bestOverall && bestOverall.score > baselineScore) {
-            return bestOverall.settings;
+        const baselineResult = await this.evaluateSettings(this.baselineSettings);
+        if (bestOverall && bestOverall.score > baselineResult.score) {
+            return {
+                bestSettings: bestOverall.settings,
+                baselineMetrics: baselineResult.metrics,
+                optimizedMetrics: bestOverall.metrics
+            };
         }
         
-        return null; // No improvement found
+        return null;
     }
 }

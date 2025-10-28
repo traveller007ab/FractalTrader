@@ -1,11 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import Papa from 'papaparse';
-import type { BacktestRun, TimeSeriesData } from '../types';
+import type { BacktestRun, TimeSeriesData, StrategySettings } from '../types';
 import type { FileWithStatus, OptimizationData } from '../App';
 import { DocumentPlusIcon, FolderOpenIcon, PlayIcon, CogIcon, StopIcon, XMarkIcon, SpinnerIcon, CheckCircleIcon, XCircleIcon } from './icons';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from './Tooltip.tsx';
 import { RecentRunsList } from './RecentRunsList.tsx';
 import { getSymbolFromFilename } from '../lib/utils.ts';
+import { AnalyticsChart } from './AnalyticsChart.tsx';
 
 interface BacktestCenterProps {
     files: FileWithStatus[];
@@ -17,13 +18,13 @@ interface BacktestCenterProps {
     setBacktestProgress: React.Dispatch<React.SetStateAction<{ current: number, total: number }>>;
     stopBacktestRef: React.MutableRefObject<boolean>;
     onRunBacktest: (file: File, parsedData: TimeSeriesData[]) => Promise<void>;
-    onOptimize: (files: OptimizationData[]) => void;
+    onOptimize: (files: OptimizationData[], paramsToOptimize: (keyof StrategySettings)[]) => void;
     onSessionStart: () => void;
     recentBacktests: BacktestRun[];
     onViewBacktest: (run: BacktestRun) => void;
     optimizationState: { fileId: string | null; count: number };
     onClearFiles: () => void;
-    optimizationProgress: string;
+    optimizationProgress: { text: string; evolution: number[] };
 }
 
 const EmptyQueueState: React.FC<{ onUploadClick: () => void }> = ({ onUploadClick }) => (
@@ -37,6 +38,13 @@ const EmptyQueueState: React.FC<{ onUploadClick: () => void }> = ({ onUploadClic
     </div>
 );
 
+const optimizableParams: { id: keyof StrategySettings, label: string }[] = [
+    { id: 'smaPeriod', label: 'SMA Period' },
+    { id: 'stopLossAtrMultiplier', label: 'SL ATR' },
+    { id: 'takeProfitR_R', label: 'TP R:R' },
+    { id: 'riskPercent', label: 'Risk %' },
+    { id: 'atrFilterMultiplier', label: 'ATR Vol Filter' },
+];
 
 export const BacktestCenter: React.FC<BacktestCenterProps> = ({ 
     files, setFiles, isBacktesting, setIsBacktesting, isOptimizing, 
@@ -47,6 +55,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const folderInputRef = useRef<HTMLInputElement>(null);
     const [parsing, setParsing] = useState(false);
+    const [paramsToOptimize, setParamsToOptimize] = useState<(keyof StrategySettings)[]>(['smaPeriod', 'stopLossAtrMultiplier', 'takeProfitR_R']);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = event.target.files;
@@ -97,7 +106,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
     };
     
     const handleOptimizeClick = async () => {
-        if (files.length < 1) return;
+        if (files.length < 1 || paramsToOptimize.length === 0) return;
         
         setParsing(true);
         const filesToOptimize: OptimizationData[] = [];
@@ -114,7 +123,7 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
         setParsing(false);
         
         if (filesToOptimize.length > 0) {
-            onOptimize(filesToOptimize);
+            onOptimize(filesToOptimize, paramsToOptimize);
         }
     }
 
@@ -187,6 +196,14 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
     
     const optimizationSymbol = files.length > 0 ? getSymbolFromFilename(files[0].file.name) : null;
 
+    const evolutionData = useMemo(() => {
+        if (!optimizationProgress.evolution || optimizationProgress.evolution.length < 2) return [];
+        return optimizationProgress.evolution.map((score, index) => ({
+            date: `G${index + 1}`,
+            pnl: score
+        }));
+    }, [optimizationProgress.evolution]);
+
     return (
         <div className="p-4 space-y-4">
             <div>
@@ -237,33 +254,54 @@ export const BacktestCenter: React.FC<BacktestCenterProps> = ({
                             </div>
                         </div>
                     )}
-                     {isOptimizing && optimizationProgress && (
-                        <p className="text-xs font-semibold text-accent text-center animate-pulse">
-                            {optimizationProgress}
-                        </p>
-                    )}
-                    
+                     
                     <div className="grid grid-cols-2 gap-2 pt-1">
-                        {!isBacktesting ? (
-                             <button onClick={handleRunClick} disabled={isOptimizing || files.length === 0} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600/90 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
-                                <PlayIcon className="w-5 h-5 mr-2" />
-                                Run All
-                            </button>
-                        ) : (
-                             <button onClick={() => stopBacktestRef.current = true} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600/90 hover:bg-red-600">
-                                <StopIcon className="w-5 h-5 mr-2"/>
-                                Stop
-                            </button>
-                        )}
-                       
-                    </div>
-                     <Tooltip content={`Uses a genetic algorithm to find the best parameters for ${optimizationSymbol} based on all queued data.`}>
-                        <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0} className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-accent/30">
-                            {isOptimizing || parsing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
-                            {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : `Optimize ${optimizationSymbol}`)}
+                         <button onClick={handleRunClick} disabled={isBacktesting || isOptimizing || files.length === 0} className="w-full col-span-2 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600/90 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <PlayIcon className="w-5 h-5 mr-2" />
+                            Run All Backtests
                         </button>
-                    </Tooltip>
-                     <p className="text-xs text-text-muted text-center pt-1">Note: For best results, optimize for one symbol at a time.</p>
+                    </div>
+
+                    <div className="pt-2">
+                        <h4 className="text-sm font-semibold text-text-primary mb-2">Optimization</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            {optimizableParams.map(param => (
+                                <label key={param.id} className="flex items-center text-xs space-x-2 bg-bg-primary/50 p-2 rounded-md cursor-pointer border border-border hover:border-accent/50">
+                                    <input
+                                        type="checkbox"
+                                        checked={paramsToOptimize.includes(param.id)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setParamsToOptimize(prev => [...prev, param.id]);
+                                            } else {
+                                                setParamsToOptimize(prev => prev.filter(p => p !== param.id));
+                                            }
+                                        }}
+                                        className="h-3 w-3 rounded bg-bg-secondary border-border text-accent focus:ring-accent"
+                                    />
+                                    <span>{param.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <Tooltip content={`Uses a genetic algorithm to find the best settings for the selected parameters, based on all queued data.`}>
+                            <button onClick={handleOptimizeClick} disabled={isBacktesting || isOptimizing || parsing || files.length === 0 || paramsToOptimize.length === 0} className="w-full mt-3 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-accent/30">
+                                {isOptimizing || parsing ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CogIcon className="w-5 h-5 mr-2" />}
+                                {isOptimizing ? "Optimizing..." : (parsing ? "Parsing..." : `Optimize ${optimizationSymbol} (${paramsToOptimize.length})`)}
+                            </button>
+                        </Tooltip>
+                         {isOptimizing && (
+                            <div className="mt-2 text-center">
+                                <p className="text-xs font-semibold text-accent animate-pulse">
+                                    {optimizationProgress.text}
+                                </p>
+                                {evolutionData.length > 0 && (
+                                    <div className="h-20 mt-2">
+                                        <AnalyticsChart data={evolutionData} height={80} />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             ) : (
                  <EmptyQueueState onUploadClick={() => fileInputRef.current?.click()} />

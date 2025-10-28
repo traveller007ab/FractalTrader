@@ -1,19 +1,6 @@
 // Fix: Add file extensions to imports for proper module resolution.
-import type { TimeSeriesData, StrategySettings, BacktestMetrics, PnlDataPoint, FullStrategySettings } from '../types.ts';
+import type { TimeSeriesData, StrategySettings, BacktestMetrics, PnlDataPoint, FullStrategySettings, BacktestTrade } from '../types.ts';
 import { getSymbolSettings } from './strategyRBSv2Config.ts';
-
-interface BacktestTrade {
-    entry_price: number;
-    exit_price?: number;
-    side: 'buy' | 'sell';
-    size: number;
-    stop_loss: number;
-    take_profit: number;
-    entry_bar_index: number;
-    exit_bar_index?: number;
-    pnl?: number;
-    status: 'open' | 'closed';
-}
 
 // Technical analysis helpers for backtesting
 const calculateSMA = (data: { close: number }[], period: number, startIndex: number): number | null => {
@@ -96,7 +83,7 @@ export function runBacktestFromData(
             if (closed) {
                 openTrade.exit_price = exitPrice;
                 openTrade.status = 'closed';
-                openTrade.exit_bar_index = i;
+                openTrade.exit_datetime = currentBar.datetime;
                 openTrade.pnl = (openTrade.exit_price - openTrade.entry_price) * openTrade.size * (openTrade.side === 'buy' ? 1 : -1);
                 
                 accountEquity += openTrade.pnl;
@@ -176,7 +163,7 @@ export function runBacktestFromData(
             size,
             stop_loss,
             take_profit,
-            entry_bar_index: i,
+            entry_datetime: currentBar.datetime,
             status: 'open'
         };
     }
@@ -221,7 +208,8 @@ export function runBacktestFromData(
         total_trades,
         grossProfit,
         grossLoss,
-        pnl_history: pnlHistory.length > 1 ? pnlHistory : []
+        pnl_history: pnlHistory.length > 1 ? pnlHistory : [],
+        trades: closedTrades,
     };
 
     return { trades, metrics };

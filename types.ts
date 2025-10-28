@@ -35,6 +35,19 @@ export interface CopiedTrade {
   status: 'open' | 'closed';
 }
 
+export interface BacktestTrade {
+    entry_price: number;
+    exit_price?: number;
+    side: 'buy' | 'sell';
+    size: number;
+    stop_loss: number;
+    take_profit: number;
+    entry_datetime: string;
+    exit_datetime?: string;
+    pnl?: number;
+    status: 'open' | 'closed';
+}
+
 // Fix: Moved PnlDataPoint interface before BacktestMetrics as it is a dependency.
 export interface PnlDataPoint {
   date: string;
@@ -50,6 +63,7 @@ export interface BacktestMetrics {
   grossProfit?: number;
   grossLoss?: number;
   pnl_history?: PnlDataPoint[];
+  trades?: BacktestTrade[];
 }
 
 export interface BacktestRun {

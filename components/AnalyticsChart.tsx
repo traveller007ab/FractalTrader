@@ -5,9 +5,10 @@ import { useTheme } from '../hooks/useTheme.ts';
 
 interface AnalyticsChartProps {
   data: PnlDataPoint[];
+  height?: number; // Optional height prop
 }
 
-export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data }) => {
+export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "100%" }) => {
   const { theme } = useTheme();
 
   // Using HSL values from the new Apex theme
@@ -41,17 +42,17 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data }) => {
   if (maxPnl > minPnl) {
     zeroOffset = Math.abs(minPnl) / (maxPnl - minPnl);
   }
+  
+  const isCompact = typeof height === 'number';
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height={height}>
       <AreaChart
         data={data}
-        margin={{
-          top: 5,
-          right: 20,
-          left: -10,
-          bottom: 5,
-        }}
+        margin={isCompact ? 
+          { top: 5, right: 0, left: 0, bottom: 0 } : 
+          { top: 5, right: 20, left: -10, bottom: 5 }
+        }
       >
         <defs>
             <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
@@ -61,8 +62,9 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data }) => {
                 <stop offset="95%" stopColor={themeColors.danger} stopOpacity={0.5}/>
             </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke={themeColors.grid} vertical={false} />
+        {!isCompact && <CartesianGrid strokeDasharray="3 3" stroke={themeColors.grid} vertical={false} />}
         <XAxis 
+            hide={isCompact}
             dataKey="date" 
             stroke={themeColors.text}
             tick={{ fontSize: 12, fontFamily: 'var(--font-mono)' }} 
@@ -70,6 +72,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data }) => {
             axisLine={{ stroke: themeColors.grid }}
         />
         <YAxis 
+            hide={isCompact}
             stroke={themeColors.text}
             tick={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}
             tickLine={false}
@@ -77,7 +80,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data }) => {
             tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
             domain={['dataMin', 'dataMax']}
         />
-        <Tooltip
+        {!isCompact && <Tooltip
             contentStyle={{
                 backgroundColor: themeColors.tooltipBg,
                 borderColor: themeColors.tooltipBorder,
@@ -91,8 +94,8 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data }) => {
                  const itemColor = value >= 0 ? themeColors.accent : themeColors.danger;
                  return [<span style={{ color: itemColor }}>{`$${value.toFixed(2)}`}</span>, 'P&L'];
             }}
-        />
-        <ReferenceLine y={0} stroke={themeColors.text} strokeDasharray="2 4" />
+        />}
+        {!isCompact && <ReferenceLine y={0} stroke={themeColors.text} strokeDasharray="2 4" />}
         <Area type="monotone" dataKey="pnl" stroke={themeColors.accent} strokeWidth={2} fillOpacity={1} fill="url(#pnlGradient)" />
       </AreaChart>
     </ResponsiveContainer>
