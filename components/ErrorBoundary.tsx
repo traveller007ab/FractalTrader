@@ -23,7 +23,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  // Fix: Converted to an arrow function property to ensure `this` is correctly bound, resolving a TypeScript error where `this.setState` was not recognized.
+  // Fix: Changed to an arrow function to ensure `this` is correctly bound, resolving a type-checking issue where `setState` was not found.
   public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
@@ -42,7 +42,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  // Fix: Converted to an arrow function property to ensure `this` is correctly bound, resolving a TypeScript error where `this.props` was not recognized.
+  // Fix: Changed to an arrow function to ensure `this` is correctly bound, resolving a type-checking issue where `this.props` was not found.
   public render = () => {
     if (this.state.hasError) {
       return (

@@ -47,9 +47,6 @@ export const strategyConfig: FullStrategySettings = {
             smaPeriod: 22,
             atrFilterMultiplier: 0.8,
         },
-        'XAG/USD': {
-            exchange: 'OANDA',
-        },
     }
 };
 

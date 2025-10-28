@@ -42,7 +42,7 @@ const median = (arr: number[]): number => {
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD', 'XAG/USD', 'SOL/USD'];
+const symbols = ['ETH/USD', 'XAU/USD', 'BTC/USD', 'SOL/USD'];
 
 class SignalEngine {
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -91,8 +91,8 @@ class SignalEngine {
             this.onError(new Error(errorMessage));
         }
       }
-      // Add a delay to avoid hitting API rate limits. 15 seconds is a safe buffer.
-      await new Promise(resolve => setTimeout(resolve, 15000));
+      // Add a delay to avoid hitting API rate limits. 30 seconds is a safe buffer.
+      await new Promise(resolve => setTimeout(resolve, 30000));
     }
     console.log('[SignalEngine] All symbols checked.');
   }
@@ -287,14 +287,24 @@ class SignalEngine {
         clearTimeout(this.timeoutId);
     }
 
-    const intervalMs = 15 * 60 * 1000; // 15 minutes
-    const nextRunTime = new Date(Date.now() + intervalMs);
-    console.log(`[SignalEngine] Scheduling next check in 15 minutes at ${nextRunTime.toLocaleTimeString()}.`);
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const ms = now.getMilliseconds();
 
+    const minutesToNextCandle = 15 - (minutes % 15);
+    // Total milliseconds to the start of the next 15-min candle
+    const msToNextCandle = (minutesToNextCandle * 60 * 1000) - (seconds * 1000) - ms;
+    
+    // Add a 5-second buffer to ensure the candle data is available from the API
+    const intervalMs = msToNextCandle + 5000;
+
+    const nextRunTime = new Date(Date.now() + intervalMs);
+    console.log(`[SignalEngine] Aligned to 15m candle. Next check scheduled for ${nextRunTime.toLocaleTimeString()}.`);
 
     this.timeoutId = setTimeout(async () => {
         await this.runStrategyForAllSymbols();
-        this.scheduleNextRun(); // Reschedule for the next run
+        this.scheduleNextRun(); // Reschedule for the next cycle
     }, intervalMs);
   }
 
