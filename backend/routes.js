@@ -1,4 +1,5 @@
 import express from 'express';
+import fetch from 'node-fetch';
 import { getConnection } from './metaApiConnection.js';
 
 const router = express.Router();
