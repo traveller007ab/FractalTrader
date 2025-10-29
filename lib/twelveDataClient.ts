@@ -1,7 +1,7 @@
 // This client interacts with the backend server, which acts as a secure proxy for market data.
 import type { TimeSeriesData } from './types.ts';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = process.env.BACKEND_URL || 'http://localhost:3001/api';
 
 interface TimeSeriesParams {
     symbol: string;

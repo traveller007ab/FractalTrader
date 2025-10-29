@@ -2,7 +2,7 @@
 import type { Signal, LivePosition } from '../types';
 
 // In a real deployment, this URL should be configured via environment variables.
-const API_URL = 'http://localhost:3001/api';
+const API_URL = process.env.BACKEND_URL || 'http://localhost:3001/api';
 
 async function handleResponse(response: Response) {
     if (!response.ok) {
