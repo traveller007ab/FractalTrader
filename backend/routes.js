@@ -9,111 +9,118 @@ const asyncHandler = fn => (req, res, next) => {
 };
 
 
-// --- Helpers for Polygon.io API ---
-function mapSymbolToTicker(symbol) {
-    switch (symbol) {
-        case 'BTC/USD': return 'X:BTCUSD';
-        case 'ETH/USD': return 'X:ETHUSD';
-        case 'SOL/USD': return 'X:SOLUSD';
-        case 'XAU/USD': return 'C:XAUUSD'; // Forex
-        default:
-            if (symbol.includes('/')) return `C:${symbol.replace('/', '')}`;
-            return symbol;
-    }
-}
+// --- Proxy for Finnhub API ---
+// NOTE: For production, store this key securely as an environment variable (e.g., in a .env file).
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'd410e09r01qtsbunbe3gd410e09r01qtsbunbe40';
+const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 
-function parseInterval(interval) {
-    const supportedIntervals = ['1min', '5min', '15min', '30min', '1h', '1day', '1week', '1month'];
-    if (!supportedIntervals.includes(interval)) {
-        // Prevent allowing unsupported intervals like '45min', '2h', '4h' which were in the frontend type but not supported here.
-        throw new Error(`Polygon.io client does not support interval: ${interval}.`);
-    }
-
-    const match = interval.match(/^(\d+)(min|h|day|week|month)$/);
-    if (!match) throw new Error(`Invalid interval format: ${interval}`);
-    
-    return {
-        multiplier: parseInt(match[1], 10),
-        timespan: match[2].replace('min', 'minute').replace('h', 'hour')
+/**
+ * Maps the app's interval strings to Finnhub's resolution codes.
+ * @param {string} interval - The interval string from the client (e.g., '15min').
+ * @returns {string} The corresponding Finnhub resolution code (e.g., '15').
+ */
+const mapIntervalToResolution = (interval) => {
+    const mapping = {
+        '1min': '1', '5min': '5', '15min': '15', '30min': '30',
+        '1h': '60', '1day': 'D', '1week': 'W', '1month': 'M',
     };
-}
-
-const formatDate = (date) => date.toISOString().split('T')[0];
-
-
-// GET /api/timeseries - Secure proxy for Polygon.io data
-router.get('/timeseries', asyncHandler(async (req, res) => {
-    const API_KEY = process.env.API_KEY;
-    const BASE_URL = 'https://api.polygon.io';
-
-    if (!API_KEY) {
-        console.error("Polygon.io API key is not configured on the backend.");
-        return res.status(500).json({ message: 'API key not configured on server.' });
+    if (mapping[interval]) {
+        return mapping[interval];
     }
+    console.warn(`[Finnhub Proxy] Unsupported interval '${interval}', defaulting to 15min.`);
+    return '15'; // Default for unsupported intervals like '45min', '2h', etc.
+};
 
-    const { symbol, interval, outputsize = '30' } = req.query;
+/**
+ * Gets the correct symbol format and API endpoint for a given app symbol.
+ * @param {string} symbol - The application's symbol format (e.g., 'BTC/USD').
+ * @returns {{finnhubSymbol: string, endpoint: string}}
+ */
+const getFinnhubParams = (symbol) => {
+    const cryptoSymbols = {
+        'BTC/USD': 'BINANCE:BTCUSDT',
+        'ETH/USD': 'BINANCE:ETHUSDT',
+        'SOL/USD': 'BINANCE:SOLUSDT',
+    };
+    const forexSymbols = {
+        'XAU/USD': 'OANDA:XAU_USD',
+    };
+
+    if (cryptoSymbols[symbol]) {
+        return { finnhubSymbol: cryptoSymbols[symbol], endpoint: 'crypto/candle' };
+    }
+    if (forexSymbols[symbol]) {
+        return { finnhubSymbol: forexSymbols[symbol], endpoint: 'forex/candle' };
+    }
+    throw new Error(`Unsupported symbol for Finnhub: ${symbol}`);
+};
+
+// GET /api/timeseries - Secure proxy for Finnhub
+router.get('/timeseries', asyncHandler(async (req, res) => {
+    const { symbol, interval, outputsize = '100' } = req.query;
 
     if (!symbol || !interval) {
         return res.status(400).json({ message: 'Symbol and interval query parameters are required.' });
     }
 
     try {
-        const ticker = mapSymbolToTicker(symbol);
-        const { multiplier, timespan } = parseInterval(interval);
-        const outputsizeNum = parseInt(outputsize, 10);
+        const { finnhubSymbol, endpoint } = getFinnhubParams(symbol);
+        const resolution = mapIntervalToResolution(interval);
 
-        const to = new Date();
-        const from = new Date();
+        // Finnhub uses `from` and `to` timestamps instead of `outputsize`. We calculate them.
+        const to = Math.floor(Date.now() / 1000);
+        const count = parseInt(outputsize, 10);
+        const now = new Date();
+        let from;
         
-        let daysToSubtract;
-        switch (timespan) {
-            case 'minute':
-            case 'hour':
-                daysToSubtract = Math.ceil((outputsizeNum * multiplier * (timespan === 'minute' ? 1 : 60)) / (60 * 8)) + 5;
-                break;
-            case 'day':
-                daysToSubtract = Math.ceil(outputsizeNum * 1.8);
-                break;
-            default:
-                daysToSubtract = outputsizeNum * (timespan === 'week' ? 7 : 31) * 1.2;
-        }
-        from.setDate(to.getDate() - Math.max(daysToSubtract, 3));
-
-        const url = new URL(`${BASE_URL}/v2/aggs/ticker/${ticker}/range/${multiplier}/${timespan}/${formatDate(from)}/${formatDate(to)}`);
-        url.searchParams.append('apiKey', API_KEY);
-        url.searchParams.append('sort', 'asc');
-        url.searchParams.append('limit', '5000');
-
-        const polygonResponse = await fetch(url.toString());
-        const data = await polygonResponse.json();
-
-        if (!polygonResponse.ok) {
-            let errorMessage = `Polygon.io API error (${polygonResponse.status}): ${data.error || data.message || 'Unknown error'}`;
-            if (polygonResponse.status === 429) {
-                errorMessage = `RATE_LIMIT_EXCEEDED: ${data.error || 'Too many requests'}`;
-            }
-            throw new Error(errorMessage);
+        switch (resolution) {
+            case 'D': from = Math.floor(new Date(now.setDate(now.getDate() - count)).getTime() / 1000); break;
+            case 'W': from = Math.floor(new Date(now.setDate(now.getDate() - count * 7)).getTime() / 1000); break;
+            case 'M': from = Math.floor(new Date(now.setMonth(now.getMonth() - count)).getTime() / 1000); break;
+            default: // Resolution is in minutes
+                from = to - (count * parseInt(resolution, 10) * 60);
         }
 
-        if (!data.results || data.resultsCount === 0) {
-            console.warn(`No time series data returned for ${symbol} from Polygon.io`);
+        const url = new URL(`${FINNHUB_BASE_URL}/${endpoint}`);
+        url.searchParams.append('symbol', finnhubSymbol);
+        url.searchParams.append('resolution', resolution);
+        url.searchParams.append('from', from.toString());
+        url.searchParams.append('to', to.toString());
+        url.searchParams.append('token', FINNHUB_API_KEY);
+
+        const finnhubResponse = await fetch(url.toString());
+        const data = await finnhubResponse.json();
+        
+        if (!finnhubResponse.ok || data.s === 'error') {
+            // Finnhub can return 403 for permission issues.
+            const errorMessage = finnhubResponse.status === 403
+                ? "You don't have access to this resource."
+                : (data.errmsg || 'Failed to fetch data');
+            throw new Error(`Finnhub API error (${finnhubResponse.status}): ${errorMessage}`);
+        }
+
+        if (data.s === 'no_data' || !data.t) {
+            console.warn(`No time series values returned for ${symbol} (${finnhubSymbol}) from Finnhub.`);
             return res.json([]);
         }
 
-        const finalData = data.results.slice(-outputsizeNum);
-        const mappedData = finalData.map((v) => ({
-            datetime: new Date(v.t).toISOString(),
-            open: v.o,
-            high: v.h,
-            low: v.l,
-            close: v.c,
-            volume: v.v,
-        }));
-        
+        // Map Finnhub's response structure to the one expected by the application.
+        const mappedData = [];
+        for (let i = 0; i < data.t.length; i++) {
+            mappedData.push({
+                datetime: new Date(data.t[i] * 1000).toISOString(),
+                open: data.o[i],
+                high: data.h[i],
+                low: data.l[i],
+                close: data.c[i],
+                volume: data.v[i],
+            });
+        }
+
         res.status(200).json(mappedData);
 
     } catch (err) {
-        console.error('Error fetching from Polygon.io via backend:', err.message);
+        console.error(`Error fetching from Finnhub for ${symbol} via backend:`, err.message);
         res.status(500).json({ message: err.message || 'Failed to fetch time series data' });
     }
 }));

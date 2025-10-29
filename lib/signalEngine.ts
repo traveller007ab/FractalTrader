@@ -71,7 +71,8 @@ class SignalEngine {
 
     console.log(`[SignalEngine] Fetching fresh daily data for ${symbol}.`);
     const dailyDataRes = await getTimeSeries({ symbol, interval: '1day', outputsize: 55 });
-    const dailyData = dailyDataRes.reverse();
+    // Data from getTimeSeries is already chronological (oldest to newest).
+    const dailyData = dailyDataRes;
     
     if (dailyData.length > 0) {
       this.dailyDataCache.set(symbol, { fetchedDate: today, data: dailyData });
@@ -113,7 +114,8 @@ class SignalEngine {
       getTimeSeries({ symbol, interval: '15min', outputsize: 100 }) // Analysis is on the 15min timeframe
     ]);
     
-    const intervalData = intervalDataRes.reverse();
+    // Data from getTimeSeries is chronological (oldest to newest). The last element is the latest bar.
+    const intervalData = intervalDataRes;
     
     if (intervalData.length < 50 || dailyData.length < 51) {
         console.warn(`[SignalEngine] Insufficient data for ${symbol}. Needed 50 (15min) and 51 (daily), got ${intervalData.length} and ${dailyData.length}.`);

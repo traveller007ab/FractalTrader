@@ -20,8 +20,8 @@ export function useMarketData(symbol: string, interval: '1min' | '5min' | '15min
         setState(s => ({ ...s, loading: true, error: null }));
         try {
             const timeSeriesData = await getTimeSeries({ symbol, interval, outputsize });
-            // API returns newest first, so we reverse for charting
-            setState({ data: timeSeriesData.reverse(), loading: false, error: null });
+            // Data is received in chronological order (oldest to newest), which is what charts expect.
+            setState({ data: timeSeriesData, loading: false, error: null });
         } catch (err: any) {
             let errorMessage = 'Failed to fetch market data.';
             if (typeof err.message === 'string' && err.message.startsWith('RATE_LIMIT_EXCEEDED')) {
