@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface State {
   hasError: boolean;
   error?: Error;
-  errorInfo?: React.ErrorInfo;
+  errorInfo?: ErrorInfo;
   isDismissed: boolean;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: undefined,
@@ -23,29 +23,29 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch = (error: Error, errorInfo: React.ErrorInfo) => {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
-  private handleReload = () => {
+  private handleReload() {
     window.location.reload();
-  };
+  }
   
-  private handleCopy = () => {
+  private handleCopy() {
     const errorDetails = `Error: ${this.state.error?.name}\nMessage: ${this.state.error?.message}\n\nStack Trace:\n${this.state.errorInfo?.componentStack}`;
     navigator.clipboard.writeText(errorDetails).then(() => {
         alert('Error details copied to clipboard!');
     }, (err) => {
         console.error('Failed to copy error details: ', err);
     });
-  };
+  }
 
-  private handleDismiss = () => {
+  private handleDismiss() {
     this.setState({ isDismissed: true });
   }
 
-  public render = () => {
+  public render() {
     if (this.state.hasError && !this.state.isDismissed) {
       return (
         <div className="min-h-screen bg-bg-primary text-text-secondary flex flex-col p-4">
@@ -75,19 +75,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
                 <div className="mt-6 flex flex-wrap gap-3 justify-end">
                     <button
-                        onClick={this.handleCopy}
+                        onClick={() => this.handleCopy()}
                         className="px-4 py-2 text-xs font-medium text-text-primary bg-bg-secondary hover:bg-border border border-border rounded-md"
                     >
                         Copy Details
                     </button>
                     <button
-                        onClick={this.handleDismiss}
+                        onClick={() => this.handleDismiss()}
                         className="px-4 py-2 text-xs font-medium text-amber-300 bg-amber-900/50 hover:bg-amber-900/80 border border-amber-500/30 rounded-md"
                     >
                         Dismiss (Unsafe)
                     </button>
                     <button
-                        onClick={this.handleReload}
+                        onClick={() => this.handleReload()}
                         className="px-5 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent"
                     >
                         Reload Page
