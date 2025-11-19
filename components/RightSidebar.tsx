@@ -78,7 +78,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = (props) => {
 
 
     return (
-        <div className="main-panel h-full flex flex-col max-h-[calc(100vh-6rem)]">
+        <div className="main-panel h-full flex flex-col">
             <div className="flex border-b border-border flex-shrink-0 relative">
                 {tabs.map((tab, index) => (
                      <button

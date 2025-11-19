@@ -13,6 +13,7 @@ import { getSymbolFromFilename } from './lib/utils.ts';
 import { usePageFocus } from './hooks/usePageFocus.ts';
 import { soundManager } from './lib/soundManager.ts';
 import { useAppContext } from './contexts/AppContext.tsx';
+import { SignalIcon, CogIcon } from './components/icons.tsx';
 import type { Signal, CopiedTrade, StrategySettings, BacktestRun, TimeSeriesData, FullStrategySettings, BacktestMetrics } from './types.ts';
 
 export interface FileWithStatus {
@@ -58,6 +59,9 @@ function App() {
     const isFocused = usePageFocus();
     const titleIntervalRef = useRef<number | null>(null);
     const [latestSignalId, setLatestSignalId] = useState<string | null>(null);
+
+    // Mobile Navigation State
+    const [mobileTab, setMobileTab] = useState<'dashboard' | 'tools'>('dashboard');
 
     // Effect for dynamic document title
     useEffect(() => {
@@ -362,9 +366,12 @@ function App() {
     return (
         <div className="bg-bg-primary h-screen text-text-secondary flex flex-col overflow-hidden">
             <Header onSignOut={() => supabase.auth.signOut()} />
-            <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow overflow-hidden">
+            <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex-grow overflow-hidden pb-20 lg:pb-8 relative">
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_26rem] gap-6 h-full">
-                    <div className="space-y-6 animate-fade-in-up overflow-y-auto pr-2 scroll-gutter-stable" style={{ animationDelay: '200ms' }}>
+                    <div 
+                        className={`space-y-6 animate-fade-in-up overflow-y-auto pr-2 scroll-gutter-stable h-full ${mobileTab === 'dashboard' ? 'block' : 'hidden lg:block'}`}
+                        style={{ animationDelay: '200ms' }}
+                    >
                         <PerformanceDashboard 
                             copiedTrades={copiedTrades}
                             sessionBacktestRuns={sessionBacktestRuns}
@@ -379,7 +386,10 @@ function App() {
                             copiedTrades={copiedTrades}
                         />
                     </div>
-                    <div className="w-full lg:w-[26rem] animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                    <div 
+                        className={`w-full lg:w-[26rem] animate-fade-in-up h-full ${mobileTab === 'tools' ? 'block' : 'hidden lg:block'}`}
+                        style={{ animationDelay: '300ms' }}
+                    >
                         <RightSidebar 
                             strategySettings={strategySettings} 
                             onSettingsUpdate={handleSettingsUpdate}
@@ -407,6 +417,24 @@ function App() {
                     </div>
                 </div>
             </main>
+
+            {/* Mobile Bottom Navigation */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-bg-secondary border-t border-border z-50 px-6 py-3 flex justify-around items-center safe-area-bottom backdrop-blur-md bg-opacity-95">
+                <button 
+                    onClick={() => setMobileTab('dashboard')}
+                    className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'dashboard' ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+                >
+                    <SignalIcon className="w-6 h-6" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">Dashboard</span>
+                </button>
+                <button 
+                    onClick={() => setMobileTab('tools')}
+                    className={`flex flex-col items-center gap-1 transition-colors ${mobileTab === 'tools' ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+                >
+                    <CogIcon className="w-6 h-6" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">Tools</span>
+                </button>
+            </div>
         </div>
     );
 }
