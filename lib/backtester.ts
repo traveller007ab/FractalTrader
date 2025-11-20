@@ -46,11 +46,14 @@ export function runBacktestFromData(
         throw new Error(`Insufficient historical data. The strategy requires at least ${requiredDataLength} data points, but only ${allData?.length || 0} were provided.`);
     }
     
-    const STARTING_EQUITY = 200;
+    // STARTING EQUITY CHANGED TO 1000
+    const STARTING_EQUITY = 1000;
     const trades: BacktestTrade[] = [];
     let openTrade: BacktestTrade | null = null;
     let accountEquity = STARTING_EQUITY;
-    const pnlHistory: PnlDataPoint[] = [{ date: allData[0]?.datetime || new Date().toISOString(), pnl: 0 }];
+    
+    // Initialize history with the starting equity
+    const pnlHistory: PnlDataPoint[] = [{ date: allData[0]?.datetime || new Date().toISOString(), pnl: STARTING_EQUITY }];
     let cumulativePnl = 0;
 
     const { smaPeriod, atrPeriod, atrFilterMultiplier, stopLossAtrMultiplier, takeProfitR_R, riskPercent } = settings;
@@ -88,7 +91,9 @@ export function runBacktestFromData(
                 
                 accountEquity += openTrade.pnl;
                 cumulativePnl += openTrade.pnl;
-                pnlHistory.push({ date: currentBar.datetime, pnl: cumulativePnl });
+                
+                // Push the total ACCOUNT EQUITY, not just the pnl
+                pnlHistory.push({ date: currentBar.datetime, pnl: accountEquity });
                 
                 trades.push(openTrade);
                 openTrade = null;
@@ -188,6 +193,7 @@ export function runBacktestFromData(
     let maxDrawdown = 0;
     let peakEquity = STARTING_EQUITY;
     let currentEquity = STARTING_EQUITY;
+    // Reconstruct equity curve for drawdown calculation just to be safe
     const equityCurve = [STARTING_EQUITY];
     for (const trade of closedTrades) {
         currentEquity += trade.pnl || 0;
@@ -201,14 +207,14 @@ export function runBacktestFromData(
     }
     
     const metrics: BacktestMetrics = {
-        total_pnl: cumulativePnl,
+        total_pnl: cumulativePnl, // Keep this relative for the Stat Card
         win_rate,
         max_drawdown: maxDrawdown * 100,
         profit_factor,
         total_trades,
         grossProfit,
         grossLoss,
-        pnl_history: pnlHistory.length > 1 ? pnlHistory : [],
+        pnl_history: pnlHistory.length > 1 ? pnlHistory : [], // This is now the Equity Curve
         trades: closedTrades,
     };
 

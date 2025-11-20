@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Signal, CopiedTrade } from '../types';
 import type { User } from '@supabase/supabase-js';
-import { CopyIcon } from './icons.tsx';
+import { CopyIcon, CheckIcon } from './icons.tsx';
 import { Tooltip } from './Tooltip.tsx';
 
 interface SignalCardProps {
@@ -16,7 +16,9 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
   const copiedTrade = useMemo(() => copiedTrades.find(t => t.signal_id === signal.signal_id && t.user_id === user.id), [copiedTrades, signal.signal_id, user.id]);
 
   const [isExpired, setIsExpired] = useState(() => {
-    return !copiedTrade && (Date.now() - new Date(signal.timestamp).getTime()) > 3600000;
+    // Immediate check: if we copied it, it is NEVER expired for us.
+    if (copiedTrade) return false;
+    return (Date.now() - new Date(signal.timestamp).getTime()) > 3600000;
   });
 
   useEffect(() => {
@@ -74,6 +76,23 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
   
   const rowClass = isNew ? 'new-signal-row' : isExpired ? 'expired-signal-row' : '';
 
+  // Determine button styling state
+  const isCopied = !!copiedTrade;
+  const isOpen = copiedTrade?.status === 'open';
+
+  let buttonClass = "inline-flex items-center p-2 border text-xs font-medium rounded-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent";
+  
+  if (!isCopied) {
+      // Default State
+      buttonClass += " border-border text-text-secondary bg-bg-secondary hover:bg-accent/10 hover:border-accent/30 hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed";
+  } else if (isOpen) {
+      // Active State (Open Trade) - Glowing Teal
+      buttonClass += " border-accent bg-accent text-white shadow-[0_0_10px_hsl(var(--color-accent)/0.4)] hover:shadow-[0_0_15px_hsl(var(--color-accent)/0.6)] cursor-default"; 
+  } else {
+      // History State (Closed Trade) - Muted
+      buttonClass += " border-border/50 bg-bg-secondary/50 text-text-muted opacity-60 cursor-default";
+  }
+
   return (
     <tr className={rowClass}>
       <td className="pl-4 pr-2 py-3 text-sm font-medium text-text-primary whitespace-nowrap align-middle text-left">{signal.symbol}</td>
@@ -93,13 +112,13 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
         </span>
       </td>
       <td className="px-3 py-3 text-center align-middle">
-        <Tooltip content={copiedTrade ? "You've already copied this trade" : "Copy this trade to your journal"} position="bottom">
+        <Tooltip content={copiedTrade ? (isOpen ? "Trade is active in your journal" : "Trade closed and journaled") : "Copy this trade to your journal"} position="bottom">
             <button
-            onClick={() => onCopyTrade(signal)}
-            disabled={!!copiedTrade}
-            className="inline-flex items-center p-2 border border-border text-xs font-medium rounded-md text-text-secondary bg-bg-secondary hover:bg-accent/10 hover:border-accent/30 hover:text-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => !isCopied && onCopyTrade(signal)}
+                disabled={isCopied}
+                className={buttonClass}
             >
-                <CopyIcon className="w-4 h-4" />
+                {isCopied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
             </button>
         </Tooltip>
       </td>
@@ -114,6 +133,7 @@ const areEqual = (prevProps: SignalCardProps, nextProps: SignalCardProps) => {
     const prevCopied = prevProps.copiedTrades.find(t => t.signal_id === prevProps.signal.signal_id);
     const nextCopied = nextProps.copiedTrades.find(t => t.signal_id === nextProps.signal.signal_id);
 
+    // Re-render if copy status or PnL changes (for open/closed check)
     return prevCopied?.status === nextCopied?.status && prevCopied?.pnl === nextCopied?.pnl;
 };
 

@@ -242,7 +242,7 @@ class SignalEngine {
     }
 
     // --- Rule R1, R2, R3: Risk Management ---
-    const accountEquity = 100000; // Mock account equity
+    const accountEquity = 1000; // Updated: Set to 1000 to match user dashboard baseline
     const stopDistance = latestAtr * stopLossAtrMultiplier;
     const stop_loss = shift === 'buy' ? entryPrice - stopDistance : entryPrice + stopDistance;
     const take_profit = shift === 'buy' ? entryPrice + (stopDistance * takeProfitR_R) : entryPrice - (stopDistance * takeProfitR_R);

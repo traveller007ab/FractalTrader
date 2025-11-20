@@ -5,10 +5,11 @@ import { useTheme } from '../hooks/useTheme.ts';
 
 interface AnalyticsChartProps {
   data: PnlDataPoint[];
-  height?: number; // Optional height prop
+  height?: number | string; // Optional height prop
+  baseline?: number; // Starting value for equity curve (default 0)
 }
 
-export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "100%" }) => {
+export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "100%", baseline = 0 }) => {
   const { theme } = useTheme();
 
   // Using HSL values from the new Apex theme
@@ -39,14 +40,26 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "
   const maxPnl = Math.max(...pnlValues);
   
   let zeroOffset = 0;
-  if (maxPnl > minPnl) {
-    zeroOffset = Math.abs(minPnl) / (maxPnl - minPnl);
+  
+  // Calculate offset based on the baseline provided
+  if (maxPnl === minPnl) {
+      // Handle flat line case to avoid divide by zero
+      // If value >= baseline, we want it Green (zeroOffset 0 -> gradientOffset 1)
+      // If value < baseline, we want it Red (zeroOffset 1 -> gradientOffset 0)
+      zeroOffset = maxPnl >= baseline ? 0 : 1;
+  } else {
+      zeroOffset = (baseline - minPnl) / (maxPnl - minPnl);
+      // Clamp offset between 0 and 1
+      zeroOffset = Math.max(0, Math.min(1, zeroOffset));
   }
+  
+  // Invert for SVG gradient (0 is top, 1 is bottom)
+  const gradientOffset = 1 - zeroOffset;
   
   const isCompact = typeof height === 'number';
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height as any}>
       <AreaChart
         data={data}
         margin={isCompact ? 
@@ -56,10 +69,10 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "
       >
         <defs>
             <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={themeColors.accent} stopOpacity={0.7}/>
-                {minPnl < 0 && <stop offset={zeroOffset} stopColor={themeColors.accent} stopOpacity={0.1}/>}
-                {minPnl < 0 && <stop offset={zeroOffset} stopColor={themeColors.danger} stopOpacity={0.1}/>}
-                <stop offset="95%" stopColor={themeColors.danger} stopOpacity={0.5}/>
+                <stop offset="0%" stopColor={themeColors.accent} stopOpacity={0.7}/>
+                <stop offset={gradientOffset} stopColor={themeColors.accent} stopOpacity={0.1}/>
+                <stop offset={gradientOffset} stopColor={themeColors.danger} stopOpacity={0.1}/>
+                <stop offset="100%" stopColor={themeColors.danger} stopOpacity={0.5}/>
             </linearGradient>
         </defs>
         {!isCompact && <CartesianGrid strokeDasharray="3 3" stroke={themeColors.grid} vertical={false} />}
@@ -78,7 +91,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "
             tickLine={false}
             axisLine={{ stroke: themeColors.grid }}
             tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
-            domain={['dataMin', 'dataMax']}
+            domain={['auto', 'auto']}
         />
         {!isCompact && <Tooltip
             contentStyle={{
@@ -91,11 +104,11 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ data, height = "
             labelStyle={{ color: themeColors.text }}
             itemStyle={{ color: themeColors.accent, fontWeight: 'bold' }}
             formatter={(value: number, name: string, props: any) => {
-                 const itemColor = value >= 0 ? themeColors.accent : themeColors.danger;
-                 return [<span style={{ color: itemColor }}>{`$${value.toFixed(2)}`}</span>, 'P&L'];
+                 const itemColor = value >= baseline ? themeColors.accent : themeColors.danger;
+                 return [<span style={{ color: itemColor }}>{`$${value.toFixed(2)}`}</span>, 'Balance'];
             }}
         />}
-        {!isCompact && <ReferenceLine y={0} stroke={themeColors.text} strokeDasharray="2 4" />}
+        {!isCompact && <ReferenceLine y={baseline} stroke={themeColors.text} strokeDasharray="2 4" />}
         <Area type="monotone" dataKey="pnl" stroke={themeColors.accent} strokeWidth={2} fillOpacity={1} fill="url(#pnlGradient)" />
       </AreaChart>
     </ResponsiveContainer>

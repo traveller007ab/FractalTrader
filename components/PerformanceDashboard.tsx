@@ -17,7 +17,7 @@ interface DisplayMetrics {
     winRate: number;
     trades: number;
     pnlHistory: PnlDataPoint[];
-    avgPnlPerTrade?: number;
+    activeCount?: number; // New metric for active copies
     runs?: number;
     profit_factor?: number;
     max_drawdown?: number;
@@ -93,22 +93,34 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
   const [activeTab, setActiveTab] = useState<'live' | 'backtest'>('live');
 
   const liveMetrics: DisplayMetrics = useMemo(() => {
+    // Calculate Active Copies first
+    const activeCount = copiedTrades.filter(t => t.status === 'open').length;
+
     const closedTrades = copiedTrades.filter(t => t.status === 'closed' && t.pnl != null);
-    if (closedTrades.length === 0) return { pnl: 0, winRate: 0, trades: 0, pnlHistory: [], avgPnlPerTrade: 0 };
     
-    let cumulativePnl = 0;
-    const pnlHistory = closedTrades
-        .sort((a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime())
-        .map(trade => {
-            cumulativePnl += trade.pnl ?? 0;
-            return { date: new Date(trade.executed_at).toLocaleDateString(), pnl: cumulativePnl };
-        });
+    // Initialize Account Balance history starting at $1000
+    const STARTING_BALANCE = 1000;
+    let currentBalance = STARTING_BALANCE;
+    const pnlHistory: PnlDataPoint[] = [{ date: 'Start', pnl: STARTING_BALANCE }];
+
+    if (closedTrades.length > 0) {
+        const sortedTrades = closedTrades
+            .sort((a, b) => new Date(a.executed_at).getTime() - new Date(b.executed_at).getTime());
         
-    const totalPnl = pnlHistory.length > 0 ? pnlHistory[pnlHistory.length - 1].pnl : 0;
-    const winRate = (closedTrades.filter(t => (t.pnl ?? 0) > 0).length / closedTrades.length) * 100;
-    const avgPnlPerTrade = closedTrades.length > 0 ? totalPnl / closedTrades.length : 0;
+        sortedTrades.forEach(trade => {
+            currentBalance += trade.pnl ?? 0;
+            pnlHistory.push({ date: new Date(trade.executed_at).toLocaleTimeString(), pnl: currentBalance });
+        });
+    } else if (activeCount > 0) {
+        // NEW: If we have active trades but no closed ones, add a 'Now' point so the chart renders a flat line
+        // This gives immediate visual feedback that the account is "live".
+        pnlHistory.push({ date: 'Now', pnl: STARTING_BALANCE });
+    }
+        
+    const totalPnl = currentBalance - STARTING_BALANCE;
+    const winRate = closedTrades.length > 0 ? (closedTrades.filter(t => (t.pnl ?? 0) > 0).length / closedTrades.length) * 100 : 0;
     
-    return { pnl: totalPnl, winRate, pnlHistory, trades: closedTrades.length, avgPnlPerTrade };
+    return { pnl: totalPnl, winRate, pnlHistory, trades: closedTrades.length, activeCount };
   }, [copiedTrades]);
 
   const backtestMetrics: DisplayMetrics = useMemo(() => {
@@ -124,6 +136,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
         totalWins += Math.round((run.metrics?.total_trades || 0) * ((run.metrics?.win_rate || 0) / 100));
     });
 
+    // For the aggregate view, we use the latest run's equity curve for simplicity
     const latestRunPnlHistory = sessionBacktestRuns[0]?.metrics?.pnl_history || [];
 
     return {
@@ -146,7 +159,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
         max_drawdown: metrics.max_drawdown,
         pnlHistory: metrics.pnl_history || [],
         tradeLog: metrics.trades || [],
-        // Fix: Removed `as any` cast as `params` is now typed as `any`.
         fileName: activeBacktest.params?.symbol || 'Focused Run'
     };
   }, [activeBacktest]);
@@ -154,39 +166,6 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
   const isBacktestTab = activeTab === 'backtest';
   const displayPnlHistory = (isBacktestTab ? (focusedBacktestMetrics || backtestMetrics) : liveMetrics).pnlHistory;
   const cardTitle = isBacktestTab ? (focusedBacktestMetrics ? `Focused: ${focusedBacktestMetrics.fileName}` : 'Backtest Session') : 'Live Signals';
-
-  const renderCards = () => {
-    if(isBacktestTab) {
-        if(focusedBacktestMetrics) {
-            return (
-                <>
-                    <StatCard title="Total P&L" value={focusedBacktestMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from this run."/>
-                    <StatCard title="Win Rate" value={focusedBacktestMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of trades that were profitable."/>
-                    <StatCard title="Profit Factor" value={focusedBacktestMetrics.profit_factor} formatter={v => v.toFixed(2)} tooltip="Gross profit divided by gross loss."/>
-                    <StatCard title="Max Drawdown" value={focusedBacktestMetrics.max_drawdown} formatter={v => `${v.toFixed(2)}%`} tooltip="The largest peak-to-trough decline in account equity."/>
-                </>
-            );
-        } else {
-            return (
-                <>
-                    <StatCard title="Total P&L" value={backtestMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Aggregate profit and loss from all backtests in this session."/>
-                    <StatCard title="Win Rate" value={backtestMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The average win rate across all backtests in this session."/>
-                    <StatCard title="Total Trades" value={backtestMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of trades executed across all backtests."/>
-                    <StatCard title="Total Runs" value={backtestMetrics.runs} formatter={v => v.toFixed(0)} tooltip="Total backtests completed in this session."/>
-                </>
-            );
-        }
-    } else {
-        return (
-             <>
-                <StatCard title="Total P&L" value={liveMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from your copied live trades."/>
-                <StatCard title="Win Rate" value={liveMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of your copied trades that were profitable."/>
-                <StatCard title="Total Trades" value={liveMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of copied trades that have been closed."/>
-                <StatCard title="Avg P&L / Trade" value={liveMetrics.avgPnlPerTrade} formatter={v => `$${v.toFixed(2)}`} tooltip="The average profit or loss for each closed trade."/>
-             </>
-        );
-    }
-  };
 
   return (
     <div className="main-panel">
@@ -213,12 +192,35 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ copi
             )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {renderCards()}
+            {isBacktestTab ? (
+                focusedBacktestMetrics ? (
+                    <>
+                        <StatCard title="Total P&L" value={focusedBacktestMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from this run."/>
+                        <StatCard title="Win Rate" value={focusedBacktestMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of trades that were profitable."/>
+                        <StatCard title="Profit Factor" value={focusedBacktestMetrics.profit_factor} formatter={v => v.toFixed(2)} tooltip="Gross profit divided by gross loss."/>
+                        <StatCard title="Max Drawdown" value={focusedBacktestMetrics.max_drawdown} formatter={v => `${v.toFixed(2)}%`} tooltip="The largest peak-to-trough decline in account equity."/>
+                    </>
+                ) : (
+                    <>
+                        <StatCard title="Total P&L" value={backtestMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Aggregate profit and loss from all backtests in this session."/>
+                        <StatCard title="Win Rate" value={backtestMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The average win rate across all backtests in this session."/>
+                        <StatCard title="Total Trades" value={backtestMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of trades executed across all backtests."/>
+                        <StatCard title="Total Runs" value={backtestMetrics.runs} formatter={v => v.toFixed(0)} tooltip="Total backtests completed in this session."/>
+                    </>
+                )
+            ) : (
+                <>
+                    <StatCard title="Total P&L" value={liveMetrics.pnl} formatter={v => `$${v.toFixed(2)}`} tooltip="Total profit and loss from your copied live trades."/>
+                    <StatCard title="Win Rate" value={liveMetrics.winRate} formatter={v => `${v.toFixed(1)}%`} tooltip="The percentage of your copied trades that were profitable."/>
+                    <StatCard title="Closed Trades" value={liveMetrics.trades} formatter={v => v.toFixed(0)} tooltip="Total number of copied trades that have been closed."/>
+                    <StatCard title="Active Copies" value={liveMetrics.activeCount} formatter={v => v.toFixed(0)} tooltip="Number of trades currently open in your journal."/>
+                </>
+            )}
         </div>
       </div>
       <div className="h-64 p-4">
          {displayPnlHistory.length > 1 ? (
-            <AnalyticsChart data={displayPnlHistory} />
+            <AnalyticsChart data={displayPnlHistory} baseline={1000} />
          ) : (
             <div className="flex items-center justify-center h-full text-text-muted">
                 {isBacktestTab ? 'Run a backtest to see results.' : 'Copy trades to see live performance.'}

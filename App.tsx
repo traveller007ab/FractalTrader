@@ -14,6 +14,7 @@ import { usePageFocus } from './hooks/usePageFocus.ts';
 import { soundManager } from './lib/soundManager.ts';
 import { useAppContext } from './contexts/AppContext.tsx';
 import { SignalIcon, CogIcon } from './components/icons.tsx';
+import { getTimeSeries } from './lib/twelveDataClient.ts';
 import type { Signal, CopiedTrade, StrategySettings, BacktestRun, TimeSeriesData, FullStrategySettings, BacktestMetrics } from './types.ts';
 
 export interface FileWithStatus {
@@ -124,10 +125,9 @@ function App() {
     // Refresh data on page focus
     useEffect(() => {
         if (isFocused && user) {
-            addToast('Refreshing data...', 'info');
             fetchInitialData(user);
         }
-    }, [isFocused, user, fetchInitialData, addToast]);
+    }, [isFocused, user, fetchInitialData]);
 
 
     useEffect(() => {
@@ -204,6 +204,90 @@ function App() {
             supabase.removeChannel(copiedTradesChannel);
         };
     }, [user, addToast, isFocused, latestSignalId]);
+    
+    // --- TP/SL Monitoring for Open Trades ---
+    useEffect(() => {
+        if (!user || copiedTrades.length === 0) return;
+
+        const manageOpenTrades = async () => {
+            const openTrades = copiedTrades.filter(t => t.status === 'open');
+            if (openTrades.length === 0) return;
+
+            for (const trade of openTrades) {
+                let signal = signals.find(s => s.signal_id === trade.signal_id);
+                
+                // Fallback: fetch signal from DB if not in local state
+                if (!signal) {
+                    try {
+                        const { data } = await supabase
+                            .from('signals')
+                            .select('*')
+                            .eq('signal_id', trade.signal_id)
+                            .maybeSingle();
+                        if (data) signal = data as Signal;
+                    } catch (e) {
+                        console.error("Error fetching missing signal:", e);
+                    }
+                }
+
+                if (!signal) continue;
+
+                try {
+                    // Fetch the latest candle (1 minute) to check High/Low
+                    const prices = await getTimeSeries({ symbol: signal.symbol, interval: '1min', outputsize: 1 });
+                    if (prices.length > 0) {
+                        // getTimeSeries returns [oldest, ..., newest] (via .reverse() in client)
+                        // So the last element is the most recent candle.
+                        const latestCandle = prices[prices.length - 1];
+                        
+                        let closePrice: number | null = null;
+                        let closeReason = '';
+
+                        // Check TP/SL hits
+                        if (signal.side === 'buy') {
+                            if (latestCandle.low <= signal.stop_loss) {
+                                closePrice = signal.stop_loss;
+                                closeReason = 'Hit Stop Loss';
+                            } else if (latestCandle.high >= signal.take_profit) {
+                                closePrice = signal.take_profit;
+                                closeReason = 'Hit Take Profit';
+                            }
+                        } else { // Sell
+                            if (latestCandle.high >= signal.stop_loss) {
+                                closePrice = signal.stop_loss;
+                                closeReason = 'Hit Stop Loss';
+                            } else if (latestCandle.low <= signal.take_profit) {
+                                closePrice = signal.take_profit;
+                                closeReason = 'Hit Take Profit';
+                            }
+                        }
+
+                        // If price hit a target, close the trade
+                        if (closePrice !== null) {
+                            const pnl = (closePrice - trade.entry_price) * (signal.side === 'buy' ? 1 : -1) * signal.size;
+                            
+                            await supabase.from('copied_trades').update({
+                                status: 'closed',
+                                exit_price: closePrice,
+                                pnl: pnl,
+                            }).eq('id', trade.id);
+                            
+                            addToast(`${closeReason}: ${signal.symbol} closed at ${closePrice}`, pnl >= 0 ? 'success' : 'info');
+                            soundManager.play(pnl >= 0 ? 'success' : 'newSignal');
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Failed to monitor trade for ${signal.symbol}`, error);
+                }
+            }
+        };
+
+        // Run check immediately and then every 30 seconds
+        manageOpenTrades();
+        const interval = setInterval(manageOpenTrades, 30000);
+        return () => clearInterval(interval);
+
+    }, [copiedTrades, signals, user, addToast]);
 
     useEffect(() => {
         const originalConsoleLog = console.log;
