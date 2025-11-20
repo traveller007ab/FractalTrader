@@ -28,11 +28,11 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({ errorInfo });
   }
 
-  private handleReload() {
+  private handleReload = () => {
     window.location.reload();
   }
   
-  private handleCopy() {
+  private handleCopy = () => {
     const errorDetails = `Error: ${this.state.error?.name}\nMessage: ${this.state.error?.message}\n\nStack Trace:\n${this.state.errorInfo?.componentStack}`;
     navigator.clipboard.writeText(errorDetails).then(() => {
         alert('Error details copied to clipboard!');
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   }
 
-  private handleDismiss() {
+  private handleDismiss = () => {
     this.setState({ isDismissed: true });
   }
 
@@ -75,19 +75,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
                 <div className="mt-6 flex flex-wrap gap-3 justify-end">
                     <button
-                        onClick={() => this.handleCopy()}
+                        onClick={this.handleCopy}
                         className="px-4 py-2 text-xs font-medium text-text-primary bg-bg-secondary hover:bg-border border border-border rounded-md"
                     >
                         Copy Details
                     </button>
                     <button
-                        onClick={() => this.handleDismiss()}
+                        onClick={this.handleDismiss}
                         className="px-4 py-2 text-xs font-medium text-amber-300 bg-amber-900/50 hover:bg-amber-900/80 border border-amber-500/30 rounded-md"
                     >
                         Dismiss (Unsafe)
                     </button>
                     <button
-                        onClick={() => this.handleReload()}
+                        onClick={this.handleReload}
                         className="px-5 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-secondary focus:ring-accent"
                     >
                         Reload Page
@@ -98,7 +98,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Render children if there's no error, or if the user dismissed the error
     return this.props.children;
   }
 }

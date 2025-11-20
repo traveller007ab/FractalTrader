@@ -36,23 +36,38 @@ export const SignalFeed: React.FC<SignalFeedProps> = ({ signals, onCopyTrade, on
             <table className="min-w-full divide-y divide-border table-fixed">
                 <thead className="bg-bg-secondary/80 sticky top-0 z-10 backdrop-blur-sm">
                     <tr>
-                    <th scope="col" style={{ width: '12%' }} className="pl-4 pr-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Symbol</th>
-                    <th scope="col" style={{ width: '12%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Time</th>
-                    <th scope="col" style={{ width: '8%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Side</th>
-                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Entry Price</th>
-                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Stop Loss</th>
-                    <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Take Profit</th>
-                    <th scope="col" style={{ width: '9%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">
-                        <Tooltip content="The bot's calculated confidence in this signal's success, based on multiple factors like volume and trend alignment.">
-                            <span className="cursor-help border-b border-dashed border-text-muted/50">Confidence</span>
-                        </Tooltip>
-                    </th>
-                    <th scope="col" style={{ width: '10%' }} className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">
-                        <Tooltip content="Win/Loss is based on your copied trades. Active signals are recent. Expired signals are older than 1 hour and may no longer be relevant.">
-                            <span className="cursor-help border-b border-dashed border-text-muted/50">Status</span>
-                        </Tooltip>
-                    </th>
-                    <th scope="col" style={{ width: '10%' }} className="px-3 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider">Action</th>
+                        <th scope="col" style={{ width: '12%' }} className="pl-4 pr-2 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">Symbol</th>
+                        <th scope="col" style={{ width: '12%' }} className="px-2 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">Time</th>
+                        
+                        <th scope="col" style={{ width: '8%' }} className="px-1 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            Side
+                        </th>
+                        
+                        <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            Entry
+                        </th>
+                        <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            Stop Loss
+                        </th>
+                        <th scope="col" style={{ width: '13%' }} className="px-3 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            Take Profit
+                        </th>
+                        
+                        <th scope="col" style={{ width: '9%' }} className="px-1 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            <Tooltip content="The bot's calculated confidence based on volume and trend." position="bottom">
+                                <span className="cursor-help border-b border-dashed border-text-muted/50">Conf.</span>
+                            </Tooltip>
+                        </th>
+                        
+                        <th scope="col" style={{ width: '10%' }} className="px-1 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            <Tooltip content="Status based on time or your copied trades." position="bottom">
+                                <span className="cursor-help border-b border-dashed border-text-muted/50">Status</span>
+                            </Tooltip>
+                        </th>
+                        
+                        <th scope="col" style={{ width: '10%' }} className="px-3 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider align-middle">
+                            Action
+                        </th>
                     </tr>
                 </thead>
                 <tbody className="bg-bg-secondary divide-y divide-border">

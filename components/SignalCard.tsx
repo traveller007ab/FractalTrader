@@ -16,13 +16,11 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
   const copiedTrade = useMemo(() => copiedTrades.find(t => t.signal_id === signal.signal_id && t.user_id === user.id), [copiedTrades, signal.signal_id, user.id]);
 
   const [isExpired, setIsExpired] = useState(() => {
-    // A signal is only considered expired for styling if it hasn't been copied and is over an hour old.
     return !copiedTrade && (Date.now() - new Date(signal.timestamp).getTime()) > 3600000;
   });
 
   useEffect(() => {
     if (copiedTrade) {
-      // If a trade is copied, it can't be considered expired for styling purposes.
       setIsExpired(false);
       return;
     }
@@ -32,19 +30,15 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
     const timeUntilExpiry = expiryTime - Date.now();
 
     if (timeUntilExpiry > 0) {
-      // The signal is still active, set a timer to update its state when it expires.
-      setIsExpired(false); // Ensure it's not expired initially
+      setIsExpired(false);
       const timer = setTimeout(() => {
         setIsExpired(true);
       }, timeUntilExpiry);
-      
-      // Cleanup the timer if the component unmounts or props change.
       return () => clearTimeout(timer);
     } else {
-      // The signal was already expired on mount.
       setIsExpired(true);
     }
-  }, [signal.timestamp, copiedTrade]); // Rerun effect if the signal or copied status changes.
+  }, [signal.timestamp, copiedTrade]);
   
   const getStatus = (): { text: string; color: string; bg: string } => {
     if (copiedTrade) {
@@ -82,20 +76,24 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
 
   return (
     <tr className={rowClass}>
-      <td className="pl-4 pr-3 py-3 text-sm font-medium text-text-primary whitespace-nowrap">{signal.symbol}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono">{new Date(signal.timestamp).toLocaleTimeString()}</td>
-      <td className={`px-3 py-3 text-sm font-semibold whitespace-nowrap ${signal.side === 'buy' ? 'text-success' : 'text-danger'}`}>{signal.side.toUpperCase()}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(signal.price)}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(signal.stop_loss)}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatPrice(signal.take_profit)}</td>
-      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right">{formatConfidence(signal.confidence)}</td>
-      <td className="px-3 py-3 text-sm whitespace-nowrap">
+      <td className="pl-4 pr-2 py-3 text-sm font-medium text-text-primary whitespace-nowrap align-middle text-left">{signal.symbol}</td>
+      <td className="px-2 py-3 text-sm text-text-secondary whitespace-nowrap font-mono align-middle text-left">{new Date(signal.timestamp).toLocaleTimeString()}</td>
+      <td className={`px-1 py-3 text-sm font-semibold whitespace-nowrap text-center align-middle ${signal.side === 'buy' ? 'text-success' : 'text-danger'}`}>{signal.side.toUpperCase()}</td>
+      
+      {/* Prices are Right Aligned */}
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right align-middle">{formatPrice(signal.price)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right align-middle">{formatPrice(signal.stop_loss)}</td>
+      <td className="px-3 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-right align-middle">{formatPrice(signal.take_profit)}</td>
+      
+      {/* Metadata is Centered */}
+      <td className="px-1 py-3 text-sm text-text-secondary whitespace-nowrap font-mono text-center align-middle">{formatConfidence(signal.confidence)}</td>
+      <td className="px-1 py-3 text-sm whitespace-nowrap text-center align-middle">
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.bg} ${status.color}`}>
             {status.text}
         </span>
       </td>
-      <td className="px-3 py-3 text-center">
-        <Tooltip content={copiedTrade ? "You've already copied this trade" : "Copy this trade to your journal"}>
+      <td className="px-3 py-3 text-center align-middle">
+        <Tooltip content={copiedTrade ? "You've already copied this trade" : "Copy this trade to your journal"} position="bottom">
             <button
             onClick={() => onCopyTrade(signal)}
             disabled={!!copiedTrade}
@@ -109,8 +107,6 @@ const SignalCardComponent: React.FC<SignalCardProps> = ({ signal, onCopyTrade, c
   );
 };
 
-// Memoize the component to prevent unnecessary re-renders based on prop changes.
-// The component's internal state now handles time-based updates.
 const areEqual = (prevProps: SignalCardProps, nextProps: SignalCardProps) => {
     if (prevProps.signal.signal_id !== nextProps.signal.signal_id || prevProps.isNew !== nextProps.isNew) {
         return false;
