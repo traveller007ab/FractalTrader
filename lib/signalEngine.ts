@@ -174,15 +174,16 @@ class SignalEngine {
     metadata.PDL = PDL;
     
     metadata.pd_distance_status = 'safe';
+    
+    // Update: Proximity to PDH/PDL no longer blocks the trade if the 15m Trend confirms it.
+    // We check the distance for metadata, but allow the signal to proceed.
     if (shift === 'buy' && Math.abs(entryPrice - PDH) <= latestAtr * proximityAtrMultiplier) {
-        metadata.pd_distance_status = 'blocked_near_pdh';
-        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Too close to PDH.`);
-        return;
+        metadata.pd_distance_status = 'warning_near_pdh';
+        console.log(`[SignalEngine] ${symbol} ${shift} is near PDH, but allowed by 15m Trend.`);
     }
     if (shift === 'sell' && Math.abs(entryPrice - PDL) <= latestAtr * proximityAtrMultiplier) {
-        metadata.pd_distance_status = 'blocked_near_pdl';
-        console.log(`[SignalEngine] ${symbol} ${shift} signal rejected: Too close to PDL.`);
-        return;
+        metadata.pd_distance_status = 'warning_near_pdl';
+        console.log(`[SignalEngine] ${symbol} ${shift} is near PDL, but allowed by 15m Trend.`);
     }
 
     // --- Rule V1: Volatility Filter ---
